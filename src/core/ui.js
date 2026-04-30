@@ -18,7 +18,7 @@
             'z-index:2147483647;',
             'right:10px;',
             'top:10px;',
-            'width:min(320px, calc(100vw - 20px));',
+            'width:min(340px, calc(100vw - 20px));',
             'max-height:calc(100vh - 20px);',
             'overflow:auto;',
             'background:rgba(18,18,18,0.97);',
@@ -40,6 +40,16 @@
         menu.appendChild(title);
 
         menu.appendChild(selectRow('Log level', 'logLevel', ['off', 'error', 'warn', 'info', 'debug', 'trace']));
+
+        const blobTitle = document.createElement('div');
+        blobTitle.textContent = 'Blob loading';
+        blobTitle.style.cssText = 'font-weight:bold;margin:10px 0 5px;';
+        menu.appendChild(blobTitle);
+
+        menu.appendChild(numberSelectRow('Blob size limit', 'blobMaxMb', [0, 25, 50, 80, 120, 200], value => value === 0 ? 'No limit' : `${value} MB`));
+        menu.appendChild(numberSelectRow('Loaded blob videos', 'blobMaxActive', [1, 2, 3, 5], value => String(value), () => {
+            if (root.blob && typeof root.blob.cleanup === 'function') root.blob.cleanup();
+        }));
 
         const serviceTitle = document.createElement('div');
         serviceTitle.textContent = 'Enabled services';
@@ -63,6 +73,7 @@
         const reset = smallButton('Reset');
         reset.onclick = () => {
             root.config.reset();
+            if (root.blob && typeof root.blob.cleanup === 'function') root.blob.cleanup();
             closeSettingsMenus();
             openSettingsMenu(anchor);
             root.dom && root.dom.scan(document.body);
@@ -103,6 +114,34 @@
         });
 
         select.onchange = () => root.config.set(settingName, select.value);
+
+        row.appendChild(label);
+        row.appendChild(select);
+        return row;
+    }
+
+    function numberSelectRow(labelText, settingName, values, labelMaker, afterChange) {
+        const row = document.createElement('label');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0;color:#ccc;';
+
+        const label = document.createElement('span');
+        label.textContent = labelText;
+
+        const select = document.createElement('select');
+        select.style.cssText = 'background:#222;color:#eee;border:1px solid #666;border-radius:4px;padding:2px 4px;';
+
+        values.forEach(value => {
+            const option = document.createElement('option');
+            option.value = String(value);
+            option.textContent = labelMaker ? labelMaker(value) : String(value);
+            if (Number(root.config.get(settingName)) === value) option.selected = true;
+            select.appendChild(option);
+        });
+
+        select.onchange = () => {
+            root.config.set(settingName, Number(select.value));
+            if (typeof afterChange === 'function') afterChange();
+        };
 
         row.appendChild(label);
         row.appendChild(select);
