@@ -7,6 +7,8 @@
 
     const defaults = {
         logLevel: 'info',
+        blobMaxMb: 80,       // 0 means no limit
+        blobMaxActive: 3,
         enabledServices: {}
     };
 
@@ -16,16 +18,26 @@
         return JSON.parse(JSON.stringify(defaults));
     }
 
+    function sanitizeNumberChoice(value, allowed, fallback) {
+        const n = Number(value);
+        return allowed.includes(n) ? n : fallback;
+    }
+
     function load() {
         try {
             const raw = localStorage.getItem(KEY);
             if (!raw) return cloneDefaults();
             const parsed = JSON.parse(raw);
+            const base = cloneDefaults();
+
             return {
-                ...cloneDefaults(),
+                ...base,
                 ...parsed,
+                logLevel: ['off', 'error', 'warn', 'info', 'debug', 'trace'].includes(parsed.logLevel) ? parsed.logLevel : base.logLevel,
+                blobMaxMb: sanitizeNumberChoice(parsed.blobMaxMb, [0, 25, 50, 80, 120, 200], base.blobMaxMb),
+                blobMaxActive: sanitizeNumberChoice(parsed.blobMaxActive, [1, 2, 3, 5], base.blobMaxActive),
                 enabledServices: {
-                    ...cloneDefaults().enabledServices,
+                    ...base.enabledServices,
                     ...(parsed.enabledServices || {})
                 }
             };
@@ -52,6 +64,12 @@
         set(name, value) {
             settings[name] = value;
             save();
+        },
+
+        blobMaxBytes() {
+            const mb = Number(settings.blobMaxMb);
+            if (mb === 0) return Infinity;
+            return mb * 1024 * 1024;
         },
 
         isServiceEnabled(key) {
