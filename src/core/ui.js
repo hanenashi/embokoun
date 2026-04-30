@@ -16,8 +16,6 @@
         menu.style.cssText = [
             'position:fixed;',
             'z-index:2147483647;',
-            'right:10px;',
-            'top:10px;',
             'width:min(340px, calc(100vw - 20px));',
             'max-height:calc(100vh - 20px);',
             'overflow:auto;',
@@ -31,6 +29,17 @@
             'padding:10px;',
             'box-sizing:border-box;'
         ].join('');
+
+        if (anchor && typeof anchor.getBoundingClientRect === 'function') {
+            const rect = anchor.getBoundingClientRect();
+            menu.style.right = 'auto';
+            menu.style.left = `${Math.max(10, Math.min(rect.right - 340, window.innerWidth - 350))}px`;
+            menu.style.top = `${Math.max(10, Math.min(rect.bottom + 8, window.innerHeight - 420))}px`;
+        } else {
+            menu.style.left = '50%';
+            menu.style.top = '50%';
+            menu.style.transform = 'translate(-50%, -50%)';
+        }
 
         menu.addEventListener('click', ev => ev.stopPropagation());
 
