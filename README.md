@@ -8,9 +8,9 @@ Goal: make Okoun video embedding maintainable, testable, and expandable without 
 
 Install the loader userscript:
 
-```text
-https://raw.githubusercontent.com/hanenashi/embokoun/main/embokoun.user.js
-```
+
+(https://raw.githubusercontent.com/hanenashi/embokoun/main/embokoun.user.js)
+
 
 ## Current status
 
