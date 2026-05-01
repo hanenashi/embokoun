@@ -11,9 +11,9 @@ Install the loader userscript:
 
 ## Current status
 
-`0.3.0-alpha`
+`0.4.0-alpha`
 
-This first version is a modular skeleton with:
+This version is a modular skeleton with the first universal render layer:
 
 - thin `embokoun.user.js` loader
 - classic `@require`-loaded modules for userscript-manager compatibility
@@ -24,10 +24,11 @@ This first version is a modular skeleton with:
 - toggleable logging levels
 - configurable blob size limit and active blob cleanup limit
 - modular service registry
-- Direct MP4 service
+- universal `resolve -> render` core with backward-compatible old `embed()` support
+- Direct MP4 service using the new resolve model
 - YouTube service
 - Vimeo service
-- Twitter/X service with blob-loading leech core
+- Twitter/X service using the new resolve model with blob-loading MP4 path and iframe fallback
 - universal iframe helper
 - Okoun DOM scanner and MutationObserver
 
@@ -61,6 +62,7 @@ src/core/log.js
 src/core/config.js
 src/core/ui.js
 src/core/blob.js
+src/core/render.js
 src/core/dom.js
 src/services/direct-mp4.js
 src/services/youtube.js
@@ -84,7 +86,7 @@ Every service registers itself through:
 Embokoun.services.register({ ... })
 ```
 
-Current service shape:
+Current compatibility service shape still works:
 
 ```javascript
 {
@@ -96,7 +98,35 @@ Current service shape:
 }
 ```
 
-Planned next-generation service shape is documented in [docs/media-strategy-notes.md](docs/media-strategy-notes.md). The goal is a normalized `resolve -> render` pipeline so Telegram, GIFs, Instagram, Facebook, and future goblins do not all invent their own failure behavior.
+New preferred service shape:
+
+```javascript
+{
+  key: 'direct-mp4',
+  label: 'Direct MP4',
+  match(url) {},
+  async resolve(ctx) {
+    return {
+      kind: 'video-url',
+      url: 'https://example.com/video.mp4',
+      blob: false,
+      aspect: '16/9',
+      reason: 'direct-mp4'
+    };
+  },
+  fallback(ctx) {}
+}
+```
+
+Supported render result kinds:
+
+```text
+video-url
+image-url
+iframe
+native-node
+none
+```
 
 No ES modules, no dynamic `eval`, no clever loader magic. Userscript managers are weird enough already.
 
@@ -157,8 +187,8 @@ Remote modules are loaded through `@require`, which is safer and more compatible
 
 Near-term architecture work:
 
-- universal `resolve -> render` pipeline
-- shared fallback iframe/card helper with normal/wide/tall modes
+- port YouTube and Vimeo to the resolve model
+- shared fallback iframe/card helper with normal/wide/tall modes exposed through settings
 - cancel/progress loading panel for blobs
 - GIF click-to-load strategy
 
