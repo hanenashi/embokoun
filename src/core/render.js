@@ -118,12 +118,23 @@
                 throw new Error('Download cancelled');
             }
 
-            return root.blob.makeVideoFromBlob(blob.blobUrl, ctx.service, () => root.ui.makePlaceholder(ctx.service, ctx));
+            const video = root.blob.makeVideoFromBlob(blob.blobUrl, ctx.service, () => root.ui.makePlaceholder(ctx.service, ctx));
+
+            if (loading.panel.isConnected) {
+                loading.panel.replaceWith(video);
+            }
+
+            return video;
         } catch (e) {
             if (cancelled) throw e;
 
             loading.setStatus(`${ctx.service.label} blob load failed. Opening fallback...`);
             loading.disableCancel();
+
+            if (loading.panel.isConnected && typeof ctx.service.fallback === 'function') {
+                loading.panel.replaceWith(ctx.service.fallback(ctx));
+            }
+
             throw e;
         }
     }
