@@ -19,7 +19,7 @@
         const rect = anchor.getBoundingClientRect();
         const margin = 8;
         const width = Math.min(340, Math.max(260, window.innerWidth - margin * 2));
-        const approxHeight = 440;
+        const approxHeight = 470;
 
         menu.style.width = `${width}px`;
         menu.style.transform = '';
@@ -79,6 +79,12 @@
         menu.appendChild(numberSelectRow('Loaded blob videos', 'blobMaxActive', [1, 2, 3, 5], value => String(value), () => {
             if (root.blob && typeof root.blob.cleanup === 'function') root.blob.cleanup();
         }));
+
+        const layoutTitle = document.createElement('div');
+        layoutTitle.textContent = 'Layout';
+        layoutTitle.style.cssText = 'font-weight:bold;margin:10px 0 5px;';
+        menu.appendChild(layoutTitle);
+        menu.appendChild(selectRow('Telegram placeholder', 'telegramPlaceholderSize', ['compact', 'medium', 'large']));
 
         const serviceTitle = document.createElement('div');
         serviceTitle.textContent = 'Enabled services';
@@ -342,13 +348,23 @@
         ].join(', ');
     }
 
+    function placeholderStyleForService(service) {
+        if (service && service.key === 'telegram') {
+            const size = root.config.get('telegramPlaceholderSize') || 'compact';
+            if (size === 'large') return 'height:360px;min-height:360px;background:#15202b;';
+            if (size === 'medium') return 'height:220px;min-height:180px;background:#15202b;';
+            return 'height:136px;min-height:120px;background:#15202b;';
+        }
+        return service.style || 'aspect-ratio:16/9;background:#111;';
+    }
+
     function makePlaceholder(service, ctx) {
         const placeholder = document.createElement('div');
         placeholder.setAttribute('data-embokoun-node', '1');
         placeholder.style.cssText = [
             'position:relative;',
             'width:100%;',
-            service.style || 'aspect-ratio:16/9;background:#111;',
+            placeholderStyleForService(service),
             'border-radius:4px;',
             'display:flex;',
             'align-items:center;',
