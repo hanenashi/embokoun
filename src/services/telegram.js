@@ -97,11 +97,6 @@
         return items;
     }
 
-    function extractVideoUrl(doc, baseUrl) {
-        const first = extractVideoItems(doc, baseUrl)[0];
-        return first ? first.url : '';
-    }
-
     function extractImageItems(doc, baseUrl) {
         const items = [];
 
@@ -129,11 +124,6 @@
         }
 
         return items;
-    }
-
-    function extractImageUrl(doc, baseUrl) {
-        const first = extractImageItems(doc, baseUrl)[0];
-        return first ? first.url : '';
     }
 
     function cleanTelegramText(node, baseUrl) {
@@ -172,12 +162,8 @@
         return meta ? meta.textContent.replace(/\s+/g, ' ').trim() : '';
     }
 
-    function mediaTile(item, index, total) {
-        const wrap = document.createElement('a');
-        wrap.href = item.href || item.url || '#';
-        wrap.target = '_blank';
-        wrap.rel = 'noopener noreferrer';
-        wrap.style.cssText = [
+    function tileBaseStyle(total) {
+        return [
             'position:relative;',
             'display:block;',
             'overflow:hidden;',
@@ -185,6 +171,86 @@
             'min-height:120px;',
             total === 1 ? 'aspect-ratio:16/9;' : 'aspect-ratio:1/1;'
         ].join('');
+    }
+
+    function makeTileStatus(text) {
+        const box = document.createElement('div');
+        box.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;background:rgba(0,0,0,0.78);color:#fff;font:12px sans-serif;padding:10px;box-sizing:border-box;z-index:4;';
+        box.textContent = text;
+        return box;
+    }
+
+    function loadVideoIntoTile(tile, item, total) {
+        if (!item || !item.url || tile.dataset.loading === '1') return;
+
+        tile.dataset.loading = '1';
+        tile.href = '#';
+        const status = makeTileStatus('Downloading video...');
+        tile.appendChild(status);
+
+        let cancelled = false;
+        const download = root.blob.download(item.url, {
+            referer: 'https://t.me/',
+            area: 'telegram-card',
+            onProgress(progress) {
+                const loaded = progress.loaded || 0;
+                const totalBytes = progress.total || 0;
+                if (totalBytes > 0) {
+                    status.textContent = `Downloading video... ${root.blob.formatBytes(loaded)} / ${root.blob.formatBytes(totalBytes)}`;
+                } else if (loaded > 0) {
+                    status.textContent = `Downloading video... ${root.blob.formatBytes(loaded)}`;
+                }
+            }
+        });
+
+        const cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.textContent = 'Cancel';
+        cancel.style.cssText = 'position:absolute;right:6px;bottom:6px;z-index:5;font:11px sans-serif;border:1px solid rgba(255,255,255,0.35);border-radius:10px;background:rgba(0,0,0,0.65);color:#fff;padding:3px 7px;';
+        cancel.onclick = ev => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            cancelled = true;
+            download.abort();
+            tile.replaceWith(mediaTile(item, 0, total));
+        };
+        tile.appendChild(cancel);
+
+        download.promise.then(blob => {
+            if (cancelled) {
+                if (blob && blob.blobUrl) URL.revokeObjectURL(blob.blobUrl);
+                return;
+            }
+
+            const video = root.blob.makeVideoFromBlob(blob.blobUrl, {
+                key: 'telegram-card',
+                label: 'Telegram',
+                style: `${total === 1 ? 'aspect-ratio:16/9;' : 'aspect-ratio:1/1;'}background:#000;box-shadow:none;border-radius:0;`
+            }, () => mediaTile(item, 0, total));
+            video.style.width = '100%';
+            video.style.height = '100%';
+            video.style.objectFit = 'contain';
+            video.style.display = 'block';
+            tile.replaceWith(video);
+        }).catch(err => {
+            if (cancelled) return;
+            root.log.error('telegram', 'card video blob failed', err);
+            status.textContent = 'Video load failed. Open original Telegram post.';
+            cancel.textContent = 'Open';
+            cancel.onclick = ev => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                window.open(item.href || item.url, '_blank', 'noopener,noreferrer');
+            };
+        });
+    }
+
+    function mediaTile(item, index, total) {
+        const wrap = document.createElement('a');
+        wrap.href = item.href || item.url || '#';
+        wrap.target = '_blank';
+        wrap.rel = 'noopener noreferrer';
+        wrap.style.cssText = tileBaseStyle(total);
 
         const img = document.createElement('img');
         img.src = item.thumbUrl || item.url;
@@ -194,6 +260,13 @@
         wrap.appendChild(img);
 
         if (item.type === 'video') {
+            wrap.dataset.telegramVideoTile = '1';
+            wrap.addEventListener('click', ev => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                loadVideoIntoTile(wrap, item, total);
+            });
+
             const play = document.createElement('div');
             play.textContent = '▶';
             play.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:46px;height:46px;border-radius:50%;background:rgba(0,0,0,0.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:21px;text-indent:3px;';
@@ -209,7 +282,7 @@
     }
 
     function appendMediaGrid(card, mediaItems) {
-        if (!mediaItems || !mediaItems.length) return;
+        if (!mediaItems || !mediaItems.length) return null;
 
         const grid = document.createElement('div');
         const count = Math.min(mediaItems.length, 4);
@@ -227,6 +300,7 @@
         });
 
         card.appendChild(grid);
+        return grid;
     }
 
     function makeCard(data) {
@@ -292,11 +366,15 @@
 
         if (data.videoUrl) {
             const play = document.createElement('a');
-            play.href = data.videoUrl;
-            play.target = '_blank';
-            play.rel = 'noopener noreferrer';
+            play.href = '#';
             play.textContent = 'Video';
             play.style.cssText = 'color:#168acd;text-decoration:none;font-weight:bold;';
+            play.addEventListener('click', ev => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                const tile = card.querySelector('[data-telegram-video-tile="1"]');
+                if (tile) tile.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+            });
             links.appendChild(play);
         }
 
