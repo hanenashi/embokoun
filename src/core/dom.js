@@ -33,15 +33,16 @@
 
             const wrapper = document.createElement('div');
             wrapper.setAttribute('data-embokoun-node', '1');
-            wrapper.style.cssText = `margin:12px 0;max-width:${MAX_WIDTH};display:flex;flex-direction:column;`;
+            wrapper.style.cssText = `margin:12px 0;max-width:${service.maxWidth || MAX_WIDTH};display:flex;flex-direction:column;`;
 
             const ctx = { match, originalUrl: url, link, service };
 
             if (service.lazy === false) {
-                Promise.resolve(service.embed(ctx)).then(node => {
+                root.render.embed(ctx).then(node => {
                     wrapper.insertBefore(node, wrapper.firstChild);
                 }).catch(err => {
                     root.log.error(service.key, 'direct embed failed', err);
+                    if (service.fallback) wrapper.insertBefore(service.fallback(ctx), wrapper.firstChild);
                 });
             } else {
                 wrapper.appendChild(root.ui.makePlaceholder(service, ctx));
