@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         embokoun
 // @namespace    https://github.com/hanenashi/embokoun
-// @version      0.4.1-alpha
+// @version      0.4.2-alpha
 // @description  Modular universal embedder for okoun.cz
 // @author       hanenashi
 // @match        *://*.okoun.cz/*
@@ -23,6 +23,7 @@
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/services/youtube.js
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/services/vimeo.js
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/services/twitter.js
+// @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/services/telegram.js
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/services/index.js
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/core/dom.js
 // ==/UserScript==
@@ -37,7 +38,7 @@
         return;
     }
 
-    E.version = '0.4.1-alpha';
+    E.version = '0.4.2-alpha';
     E.gm.menuCommand('Embokoun settings', () => E.ui.openSettingsMenu());
 
     E.log.info('boot', 'starting', E.version);
