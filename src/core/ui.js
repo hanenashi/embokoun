@@ -222,7 +222,7 @@
             placeholder.dataset.loading = '1';
             button.textContent = 'Loading...';
             try {
-                const node = await service.embed(ctx);
+                const node = await root.render.embed(ctx);
                 placeholder.replaceWith(node);
             } catch (e) {
                 root.log.error(service.key, 'embed failed', e);
