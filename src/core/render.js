@@ -15,6 +15,13 @@
         return '550px';
     }
 
+    function shell(node, ctx) {
+        if (root.ui && typeof root.ui.wrapLoadedNode === 'function') {
+            return root.ui.wrapLoadedNode(node, ctx);
+        }
+        return node;
+    }
+
     function makeVideo(url, result) {
         const video = document.createElement('video');
         video.setAttribute('data-embokoun-node', '1');
@@ -119,12 +126,13 @@
             }
 
             const video = root.blob.makeVideoFromBlob(blob.blobUrl, ctx.service, () => root.ui.makePlaceholder(ctx.service, ctx));
+            const wrapped = shell(video, ctx);
 
             if (loading.panel.isConnected) {
-                loading.panel.replaceWith(video);
+                loading.panel.replaceWith(wrapped);
             }
 
-            return video;
+            return wrapped;
         } catch (e) {
             if (cancelled) throw e;
 
@@ -132,7 +140,7 @@
             loading.disableCancel();
 
             if (loading.panel.isConnected && typeof ctx.service.fallback === 'function') {
-                loading.panel.replaceWith(ctx.service.fallback(ctx));
+                loading.panel.replaceWith(shell(ctx.service.fallback(ctx), ctx));
             }
 
             throw e;
@@ -148,30 +156,30 @@
 
         if (result.kind === 'native-node') {
             if (!result.node) throw new Error('native-node result without node');
-            return result.node;
+            return shell(result.node, ctx);
         }
 
         if (result.kind === 'iframe') {
-            return fallbackFrame({
+            return shell(fallbackFrame({
                 src: result.url || result.fallbackUrl,
                 service: ctx.service,
                 originalUrl: ctx.originalUrl,
                 mode: result.widthMode,
                 aspect: result.aspect,
                 reason: result.reason
-            });
+            }), ctx);
         }
 
         if (result.kind === 'image-url') {
             if (!result.url) throw new Error('image-url result without url');
-            return makeImage(result.url, result);
+            return shell(makeImage(result.url, result), ctx);
         }
 
         if (result.kind === 'video-url') {
             if (!result.url) throw new Error('video-url result without url');
 
             if (result.blob === false) {
-                return makeVideo(result.url, result);
+                return shell(makeVideo(result.url, result), ctx);
             }
 
             return renderBlobVideo(ctx, result, placeholderNode);
@@ -190,7 +198,7 @@
         }
 
         if (typeof service.embed === 'function') {
-            return service.embed(ctx);
+            return shell(await service.embed(ctx), ctx);
         }
 
         throw new Error(`Service ${service.key || '?'} has no resolve/embed handler`);
