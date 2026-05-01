@@ -195,6 +195,24 @@
         return a;
     }
 
+    function applyPlaceholderPreview(placeholder, service, ctx) {
+        if (!service || typeof service.placeholderImage !== 'function') return;
+
+        let imageUrl = null;
+        try {
+            imageUrl = service.placeholderImage(ctx);
+        } catch (e) {
+            root.log.warn(service.key || 'ui', 'placeholder image failed', e);
+        }
+
+        if (!imageUrl) return;
+
+        placeholder.style.backgroundImage = [
+            'linear-gradient(rgba(0,0,0,0.18), rgba(0,0,0,0.38))',
+            `url("${String(imageUrl).replace(/"/g, '%22')}")`
+        ].join(', ');
+    }
+
     function makePlaceholder(service, ctx) {
         const placeholder = document.createElement('div');
         placeholder.setAttribute('data-embokoun-node', '1');
@@ -211,6 +229,8 @@
             'background-position:center;',
             'background-size:cover;'
         ].join('');
+
+        applyPlaceholderPreview(placeholder, service, ctx);
 
         const button = document.createElement('div');
         button.textContent = `Load ${service.label}`;
