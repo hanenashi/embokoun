@@ -9,6 +9,7 @@
         logLevel: 'info',
         blobMaxMb: 80,       // 0 means no limit
         blobMaxActive: 3,
+        telegramPlaceholderSize: 'compact',
         enabledServices: {}
     };
 
@@ -21,6 +22,10 @@
     function sanitizeNumberChoice(value, allowed, fallback) {
         const n = Number(value);
         return allowed.includes(n) ? n : fallback;
+    }
+
+    function sanitizeStringChoice(value, allowed, fallback) {
+        return allowed.includes(value) ? value : fallback;
     }
 
     function load() {
@@ -36,6 +41,7 @@
                 logLevel: ['off', 'error', 'warn', 'info', 'debug', 'trace'].includes(parsed.logLevel) ? parsed.logLevel : base.logLevel,
                 blobMaxMb: sanitizeNumberChoice(parsed.blobMaxMb, [0, 25, 50, 80, 120, 200], base.blobMaxMb),
                 blobMaxActive: sanitizeNumberChoice(parsed.blobMaxActive, [1, 2, 3, 5], base.blobMaxActive),
+                telegramPlaceholderSize: sanitizeStringChoice(parsed.telegramPlaceholderSize, ['compact', 'medium', 'large'], base.telegramPlaceholderSize),
                 enabledServices: {
                     ...base.enabledServices,
                     ...(parsed.enabledServices || {})
