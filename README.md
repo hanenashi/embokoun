@@ -2,7 +2,7 @@
 
 Embokoun is the modular successor to `vidokoun`.
 
-Goal: make Okoun video embedding maintainable, testable, and expandable without growing one cursed mega-userscript forever.
+Goal: make Okoun media embedding maintainable, testable, and expandable without growing one cursed mega-userscript forever.
 
 ## Install
 
@@ -11,9 +11,11 @@ Install the loader userscript:
 
 ## Current status
 
-`0.4.0-alpha`
+`0.4.4-alpha`
 
-This version is a modular skeleton with the first universal render layer:
+This version is a modular userscript with a universal `resolve -> render` layer and first useful Telegram support.
+
+Current features:
 
 - thin `embokoun.user.js` loader
 - classic `@require`-loaded modules for userscript-manager compatibility
@@ -23,16 +25,61 @@ This version is a modular skeleton with the first universal render layer:
 - localStorage-backed settings
 - toggleable logging levels
 - configurable blob size limit and active blob cleanup limit
+- cancelable blob download panel with progress text
+- small settings button injected into media placeholders
+- compact / medium / large Telegram placeholder setting
 - modular service registry
 - universal `resolve -> render` core with backward-compatible old `embed()` support
-- Direct MP4 service using the new resolve model
-- YouTube service
-- Vimeo service
-- Twitter/X service using the new resolve model with blob-loading MP4 path and iframe fallback
 - universal iframe helper
 - Okoun DOM scanner and MutationObserver
 
-This is intentionally not yet full Vidokoun parity. First we build the bones, then bolt the monster muscles on.
+Current services:
+
+- Direct MP4
+- YouTube, with thumbnail placeholders
+- Vimeo
+- Twitter/X, using metadata lookup, blob-loaded MP4 path, progress/cancel, and iframe fallback
+- Telegram, with native cards for text/photo/mixed posts, blob-loaded playable video tiles, and iframe fallback
+
+This is still not full Vidokoun parity. But Telegram is no longer just a video goblin with a regex club.
+
+## Telegram behavior
+
+Telegram links such as:
+
+```text
+https://t.me/channel/12345
+https://t.me/s/channel/12345
+```
+
+are resolved through the public embed page:
+
+```text
+https://t.me/channel/12345?embed=1&mode=tme
+```
+
+Embokoun then tries this order:
+
+```text
+1. fetch Telegram embed HTML
+2. parse media and text
+3. pure single video post -> blob video
+4. mixed video/photo/text post -> native Telegram card
+5. photo/text post -> native Telegram card
+6. weird/unsupported post -> iframe fallback
+```
+
+Mixed Telegram posts keep the full card readable:
+
+```text
+Telegram card
+├─ video tile -> click to blob-load local video
+├─ photo tile(s)
+├─ full text with links cleaned for Okoun
+└─ footer actions: Video / Open
+```
+
+The video tile does **not** open the Telegram CDN directly. It uses the same blob download path as Twitter/X, so it avoids browser page CSP/media-src trouble where possible.
 
 ## Media strategy notes
 
@@ -40,17 +87,17 @@ Deeper design notes live here:
 
 [docs/media-strategy-notes.md](docs/media-strategy-notes.md)
 
-That document tracks the next architecture step before we keep adding cursed services blindly:
+That document tracks the wider architecture plan:
 
 - animated GIF handling: optional click-to-load replacement/overlay
-- controlled blob loading with limits, cleanup, and future cancel/progress UI
+- controlled blob loading with limits, cleanup, cancel, and progress UI
 - Telegram post reality: video/image/text/mixed posts need sane fallback behavior
 - universal `resolve -> render` service result model
 - universal fallback iframe/card helper
 - wider/taller iframe display modes
 - logging requirements for service leech cores
 
-Main idea: services should resolve media intent first, then core rendering decides whether to blob-load video, show image/card, or use iframe fallback. Less soup. More skeleton.
+Main idea: services resolve media intent first, then core rendering decides whether to blob-load video, show image/card, or use iframe fallback. Less soup. More skeleton.
 
 ## File layout
 
@@ -68,6 +115,7 @@ src/services/direct-mp4.js
 src/services/youtube.js
 src/services/vimeo.js
 src/services/twitter.js
+src/services/telegram.js
 src/services/index.js
 docs/media-strategy-notes.md
 ```
@@ -90,8 +138,8 @@ Current compatibility service shape still works:
 
 ```javascript
 {
-  key: 'youtube',
-  label: 'YouTube',
+  key: 'legacy-service',
+  label: 'Legacy Service',
   match(url) {},
   embed(ctx) {},
   fallback(ctx) {}
@@ -130,6 +178,30 @@ none
 
 No ES modules, no dynamic `eval`, no clever loader magic. Userscript managers are weird enough already.
 
+## Blob loading
+
+Blob-loaded videos use userscript HTTP requests instead of normal page media loading:
+
+```text
+GM_xmlhttpRequest / GM.xmlHttpRequest
+↓
+Blob
+↓
+URL.createObjectURL(...)
+↓
+local <video controls>
+```
+
+This is useful for hosts that fail when loaded directly by the page because of CSP, hotlinking, or other tiny bureaucratic goblins.
+
+Blob UI currently provides:
+
+- live progress text
+- size limit enforcement
+- Cancel button
+- active blob cleanup
+- page unload cleanup
+
 ## Logging
 
 Settings menu exposes logging level:
@@ -145,6 +217,7 @@ Logs are prefixed like:
 [embokoun:youtube]
 [embokoun:direct-mp4]
 [embokoun:twitter]
+[embokoun:telegram]
 [embokoun:blob]
 ```
 
@@ -156,11 +229,14 @@ Open from the userscript manager menu:
 Embokoun settings
 ```
 
+Also available from the small `settings` pill injected into media placeholders.
+
 Current settings:
 
-- log level
+- log level: off / error / warn / info / debug / trace
 - blob size limit: No limit / 25 / 50 / 80 / 120 / 200 MB
 - loaded blob videos: 1 / 2 / 3 / 5
+- Telegram placeholder size: compact / medium / large
 - enable/disable each registered service
 - reset settings
 
@@ -185,19 +261,19 @@ Remote modules are loaded through `@require`, which is safer and more compatible
 
 ## Roadmap
 
-Near-term architecture work:
+Near-term polish:
 
-- port YouTube and Vimeo to the resolve model
-- shared fallback iframe/card helper with normal/wide/tall modes exposed through settings
-- cancel/progress loading panel for blobs
+- better Telegram card styling and compact modes
+- optional auto-load rules per service
 - GIF click-to-load strategy
+- better diagnostics panel
+- wider/taller iframe/card helper exposed through settings
 
 Next service modules to port from Vidokoun:
 
-- Telegram leech core using the new fallback model
 - Instagram leech core
 - Facebook leech core
-- heavier diagnostics panel
+- other cursed hosts as encountered in the wild
 
 ## Design rule
 
