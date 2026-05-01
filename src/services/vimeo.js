@@ -13,15 +13,26 @@
             return url.match(/vimeo\.com\/(?:.*#|.*\/videos\/)?([0-9]+)/i);
         },
 
-        async embed(ctx) {
+        async resolve(ctx) {
             const id = ctx.match[1];
-            root.log.debug('vimeo', 'embedding id', id);
-            return root.ui.iframe(`https://player.vimeo.com/video/${encodeURIComponent(id)}?autoplay=1`, 'aspect-ratio:16/9;');
+            root.log.debug('vimeo', 'resolved id', id);
+            return {
+                kind: 'iframe',
+                url: `https://player.vimeo.com/video/${encodeURIComponent(id)}?autoplay=1`,
+                widthMode: 'normal',
+                aspect: '16/9',
+                reason: 'vimeo-embed'
+            };
         },
 
         fallback(ctx) {
             const id = ctx.match[1];
-            return root.ui.iframe(`https://player.vimeo.com/video/${encodeURIComponent(id)}`, 'aspect-ratio:16/9;');
+            return root.render.fallbackFrame({
+                src: `https://player.vimeo.com/video/${encodeURIComponent(id)}`,
+                mode: 'normal',
+                aspect: '16/9',
+                reason: 'vimeo-fallback'
+            });
         }
     });
 })();
