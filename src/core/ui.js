@@ -18,8 +18,8 @@
 
         const rect = anchor.getBoundingClientRect();
         const margin = 8;
-        const width = Math.min(340, Math.max(260, window.innerWidth - margin * 2));
-        const approxHeight = 470;
+        const width = Math.min(360, Math.max(280, window.innerWidth - margin * 2));
+        const approxHeight = 520;
 
         menu.style.width = `${width}px`;
         menu.style.transform = '';
@@ -44,7 +44,7 @@
         menu.style.cssText = [
             'position:fixed;',
             'z-index:2147483647;',
-            'width:min(340px, calc(100vw - 20px));',
+            'width:min(360px, calc(100vw - 20px));',
             'max-height:calc(100vh - 20px);',
             'overflow:auto;',
             'background:rgba(18,18,18,0.97);',
@@ -68,31 +68,19 @@
         title.style.cssText = 'font-weight:bold;margin-bottom:8px;';
         menu.appendChild(title);
 
+        menu.appendChild(sectionTitle('Core'));
         menu.appendChild(selectRow('Log level', 'logLevel', ['off', 'error', 'warn', 'info', 'debug', 'trace']));
+        menu.appendChild(checkRow('Show source links', 'showSourceLinks', () => root.dom && root.dom.scan(document.body)));
 
-        const blobTitle = document.createElement('div');
-        blobTitle.textContent = 'Blob loading';
-        blobTitle.style.cssText = 'font-weight:bold;margin:10px 0 5px;';
-        menu.appendChild(blobTitle);
-
+        menu.appendChild(sectionTitle('Blob loading'));
         menu.appendChild(numberSelectRow('Blob size limit', 'blobMaxMb', [0, 25, 50, 80, 120, 200], value => value === 0 ? 'No limit' : `${value} MB`));
         menu.appendChild(numberSelectRow('Loaded blob videos', 'blobMaxActive', [1, 2, 3, 5], value => String(value), () => {
             if (root.blob && typeof root.blob.cleanup === 'function') root.blob.cleanup();
         }));
 
-        const layoutTitle = document.createElement('div');
-        layoutTitle.textContent = 'Layout';
-        layoutTitle.style.cssText = 'font-weight:bold;margin:10px 0 5px;';
-        menu.appendChild(layoutTitle);
-        menu.appendChild(selectRow('Telegram placeholder', 'telegramPlaceholderSize', ['compact', 'medium', 'large']));
-
-        const serviceTitle = document.createElement('div');
-        serviceTitle.textContent = 'Enabled services';
-        serviceTitle.style.cssText = 'font-weight:bold;margin:10px 0 5px;';
-        menu.appendChild(serviceTitle);
-
+        menu.appendChild(sectionTitle('Services'));
         root.services.list.forEach(service => {
-            menu.appendChild(serviceRow(service));
+            menu.appendChild(serviceSection(service));
         });
 
         const buttons = document.createElement('div');
@@ -131,7 +119,14 @@
         positionSettingsMenu(menu, anchor);
     }
 
-    function selectRow(labelText, settingName, values) {
+    function sectionTitle(text) {
+        const title = document.createElement('div');
+        title.textContent = text;
+        title.style.cssText = 'font-weight:bold;margin:10px 0 5px;color:#fff;border-top:1px solid rgba(255,255,255,0.12);padding-top:8px;';
+        return title;
+    }
+
+    function selectRow(labelText, settingName, values, afterChange) {
         const row = document.createElement('label');
         row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0;color:#ccc;';
 
@@ -139,7 +134,7 @@
         label.textContent = labelText;
 
         const select = document.createElement('select');
-        select.style.cssText = 'background:#222;color:#eee;border:1px solid #666;border-radius:4px;padding:2px 4px;';
+        select.style.cssText = 'background:#222;color:#eee;border:1px solid #666;border-radius:4px;padding:2px 4px;max-width:150px;';
 
         values.forEach(value => {
             const option = document.createElement('option');
@@ -149,7 +144,10 @@
             select.appendChild(option);
         });
 
-        select.onchange = () => root.config.set(settingName, select.value);
+        select.onchange = () => {
+            root.config.set(settingName, select.value);
+            if (typeof afterChange === 'function') afterChange();
+        };
 
         row.appendChild(label);
         row.appendChild(select);
@@ -164,7 +162,7 @@
         label.textContent = labelText;
 
         const select = document.createElement('select');
-        select.style.cssText = 'background:#222;color:#eee;border:1px solid #666;border-radius:4px;padding:2px 4px;';
+        select.style.cssText = 'background:#222;color:#eee;border:1px solid #666;border-radius:4px;padding:2px 4px;max-width:150px;';
 
         values.forEach(value => {
             const option = document.createElement('option');
@@ -184,13 +182,34 @@
         return row;
     }
 
-    function serviceRow(service) {
+    function checkRow(labelText, settingName, afterChange) {
         const row = document.createElement('label');
-        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:5px 0;color:#ccc;';
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0;color:#ccc;';
 
         const label = document.createElement('span');
-        label.textContent = service.label;
+        label.textContent = labelText;
 
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = !!root.config.get(settingName);
+        checkbox.onchange = () => {
+            root.config.set(settingName, checkbox.checked);
+            if (typeof afterChange === 'function') afterChange();
+        };
+
+        row.appendChild(label);
+        row.appendChild(checkbox);
+        return row;
+    }
+
+    function serviceSection(service) {
+        const box = document.createElement('div');
+        box.style.cssText = 'border:1px solid rgba(255,255,255,0.10);border-radius:6px;margin:6px 0;padding:7px;background:rgba(255,255,255,0.03);';
+
+        const head = document.createElement('label');
+        head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;color:#eee;font-weight:bold;';
+        const label = document.createElement('span');
+        label.textContent = service.label;
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = root.config.isServiceEnabled(service.key);
@@ -198,10 +217,28 @@
             root.config.setServiceEnabled(service.key, checkbox.checked);
             if (checkbox.checked && root.dom) root.dom.scan(document.body);
         };
+        head.appendChild(label);
+        head.appendChild(checkbox);
+        box.appendChild(head);
 
-        row.appendChild(label);
-        row.appendChild(checkbox);
-        return row;
+        const auto = document.createElement('label');
+        auto.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0 0;color:#bbb;';
+        const autoLabel = document.createElement('span');
+        autoLabel.textContent = 'Auto-load';
+        const autoCheck = document.createElement('input');
+        autoCheck.type = 'checkbox';
+        autoCheck.checked = root.config.isServiceAutoLoad(service.key);
+        autoCheck.onchange = () => root.config.setServiceAutoLoad(service.key, autoCheck.checked);
+        auto.appendChild(autoLabel);
+        auto.appendChild(autoCheck);
+        box.appendChild(auto);
+
+        if (service.key === 'telegram') {
+            box.appendChild(selectRow('Placeholder', 'telegramPlaceholderSize', ['line', 'compact', 'medium', 'large']));
+            box.appendChild(checkRow('Thumbnail placeholder', 'telegramPlaceholderThumbs'));
+        }
+
+        return box;
     }
 
     function smallButton(text) {
@@ -331,6 +368,7 @@
     }
 
     function applyPlaceholderPreview(placeholder, service, ctx) {
+        if (service && service.key === 'telegram' && !root.config.get('telegramPlaceholderThumbs')) return;
         if (!service || typeof service.placeholderImage !== 'function') return;
 
         let imageUrl = null;
@@ -350,15 +388,17 @@
 
     function placeholderStyleForService(service) {
         if (service && service.key === 'telegram') {
-            const size = root.config.get('telegramPlaceholderSize') || 'compact';
+            const size = root.config.get('telegramPlaceholderSize') || 'line';
             if (size === 'large') return 'height:360px;min-height:360px;background:#15202b;';
             if (size === 'medium') return 'height:220px;min-height:180px;background:#15202b;';
-            return 'height:136px;min-height:120px;background:#15202b;';
+            if (size === 'compact') return 'height:136px;min-height:120px;background:#15202b;';
+            return 'height:38px;min-height:38px;background:#15202b;max-width:360px;';
         }
         return service.style || 'aspect-ratio:16/9;background:#111;';
     }
 
     function makePlaceholder(service, ctx) {
+        const isTelegramLine = service && service.key === 'telegram' && (root.config.get('telegramPlaceholderSize') || 'line') === 'line';
         const placeholder = document.createElement('div');
         placeholder.setAttribute('data-embokoun-node', '1');
         placeholder.style.cssText = [
@@ -373,7 +413,8 @@
             'box-shadow:0 2px 8px rgba(0,0,0,0.2);',
             'background-position:center;',
             'background-size:cover;',
-            'transition:background 0.2s ease;'
+            'transition:background 0.2s ease;',
+            isTelegramLine ? 'padding:0 44px 0 8px;box-sizing:border-box;' : ''
         ].join('');
 
         applyPlaceholderPreview(placeholder, service, ctx);
@@ -381,7 +422,9 @@
 
         const button = document.createElement('div');
         button.textContent = `Load ${service.label}`;
-        button.style.cssText = 'background:rgba(0,0,0,0.75);color:#fff;padding:10px 20px;border-radius:20px;font-family:sans-serif;font-size:13px;font-weight:bold;pointer-events:none;border:1px solid rgba(255,255,255,0.2);transition:all 0.2s;';
+        button.style.cssText = isTelegramLine
+            ? 'background:rgba(0,0,0,0.55);color:#fff;padding:4px 11px;border-radius:999px;font-family:sans-serif;font-size:12px;font-weight:bold;pointer-events:none;border:1px solid rgba(255,255,255,0.16);transition:all 0.2s;'
+            : 'background:rgba(0,0,0,0.75);color:#fff;padding:10px 20px;border-radius:20px;font-family:sans-serif;font-size:13px;font-weight:bold;pointer-events:none;border:1px solid rgba(255,255,255,0.2);transition:all 0.2s;';
         placeholder.appendChild(button);
 
         placeholder.addEventListener('mouseenter', () => {
@@ -389,7 +432,7 @@
         });
 
         placeholder.addEventListener('mouseleave', () => {
-            button.style.background = 'rgba(0,0,0,0.75)';
+            button.style.background = isTelegramLine ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.75)';
         });
 
         placeholder.addEventListener('click', async () => {
