@@ -5,13 +5,12 @@
     const root = window.Embokoun;
 
     function makeFallback(id) {
-        const frame = document.createElement('iframe');
-        frame.setAttribute('data-embokoun-node', '1');
-        frame.src = `https://platform.twitter.com/embed/Tweet.html?id=${encodeURIComponent(id)}`;
-        frame.style.cssText = 'width:100%;height:460px;resize:vertical;border:none;border-radius:4px;background:#fff;';
-        frame.allowFullscreen = true;
-        frame.allow = 'autoplay; fullscreen; picture-in-picture';
-        return frame;
+        return root.render.fallbackFrame({
+            src: `https://platform.twitter.com/embed/Tweet.html?id=${encodeURIComponent(id)}`,
+            mode: 'normal',
+            aspect: '1/1',
+            reason: 'twitter-fallback'
+        });
     }
 
     function getJson(url, timeout) {
@@ -58,7 +57,7 @@
             return url.match(/(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]+)\/status\/(\d+)/i);
         },
 
-        async embed(ctx) {
+        async resolve(ctx) {
             const username = ctx.match[1];
             const id = ctx.match[2];
             const apiUrl = `https://api.vxtwitter.com/${encodeURIComponent(username)}/status/${encodeURIComponent(id)}`;
@@ -68,20 +67,24 @@
             const videoUrl = firstMp4(data);
 
             if (!videoUrl) {
-                throw new Error('No MP4 found in tweet metadata');
+                root.log.warn('twitter', 'no mp4 found; using iframe fallback', id);
+                return {
+                    kind: 'iframe',
+                    url: `https://platform.twitter.com/embed/Tweet.html?id=${encodeURIComponent(id)}`,
+                    widthMode: 'normal',
+                    aspect: '1/1',
+                    reason: 'no-mp4-found'
+                };
             }
 
-            root.log.info('twitter', 'fetching mp4 blob', videoUrl);
-            const result = root.blob.download(videoUrl, {
+            root.log.info('twitter', 'resolved mp4', videoUrl);
+            return {
+                kind: 'video-url',
+                url: videoUrl,
                 referer: 'https://x.com/',
-                area: 'twitter',
-                onProgress(progress) {
-                    root.log.trace('twitter', 'download progress', progress.loaded, progress.total);
-                }
-            });
-
-            const blob = await result.promise;
-            return root.blob.makeVideoFromBlob(blob.blobUrl, ctx.service, () => root.ui.makePlaceholder(ctx.service, ctx));
+                aspect: '16/9',
+                reason: 'twitter-mp4'
+            };
         },
 
         fallback(ctx) {
