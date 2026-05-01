@@ -8,6 +8,34 @@
         document.querySelectorAll('.embokoun-settings-menu').forEach(menu => menu.remove());
     }
 
+    function positionSettingsMenu(menu, anchor) {
+        if (!anchor || typeof anchor.getBoundingClientRect !== 'function') {
+            menu.style.left = '50%';
+            menu.style.top = '50%';
+            menu.style.transform = 'translate(-50%, -50%)';
+            return;
+        }
+
+        const rect = anchor.getBoundingClientRect();
+        const margin = 8;
+        const width = Math.min(340, Math.max(260, window.innerWidth - margin * 2));
+        const approxHeight = 440;
+
+        menu.style.width = `${width}px`;
+        menu.style.transform = '';
+
+        let left = rect.right - width;
+        left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+
+        let top = rect.bottom + margin;
+        if (top + approxHeight > window.innerHeight) {
+            top = Math.max(margin, rect.top - approxHeight - margin);
+        }
+
+        menu.style.left = `${left}px`;
+        menu.style.top = `${top}px`;
+    }
+
     function openSettingsMenu(anchor) {
         closeSettingsMenus();
 
@@ -27,20 +55,12 @@
             'font-family:sans-serif;',
             'font-size:12px;',
             'padding:10px;',
-            'box-sizing:border-box;'
+            'box-sizing:border-box;',
+            'text-align:left;',
+            'line-height:1.3;'
         ].join('');
 
-        if (anchor && typeof anchor.getBoundingClientRect === 'function') {
-            const rect = anchor.getBoundingClientRect();
-            menu.style.right = 'auto';
-            menu.style.left = `${Math.max(10, Math.min(rect.right - 340, window.innerWidth - 350))}px`;
-            menu.style.top = `${Math.max(10, Math.min(rect.bottom + 8, window.innerHeight - 420))}px`;
-        } else {
-            menu.style.left = '50%';
-            menu.style.top = '50%';
-            menu.style.transform = 'translate(-50%, -50%)';
-        }
-
+        positionSettingsMenu(menu, anchor);
         menu.addEventListener('click', ev => ev.stopPropagation());
 
         const title = document.createElement('div');
@@ -102,6 +122,7 @@
         menu.appendChild(note);
 
         document.body.appendChild(menu);
+        positionSettingsMenu(menu, anchor);
     }
 
     function selectRow(labelText, settingName, values) {
@@ -185,6 +206,42 @@
         return button;
     }
 
+    function makeSettingsButton() {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'settings';
+        button.title = 'embokoun settings';
+        button.setAttribute('data-embokoun-node', '1');
+        button.style.cssText = [
+            'position:absolute;',
+            'top:6px;',
+            'right:6px;',
+            'z-index:5;',
+            'font-family:sans-serif;',
+            'font-size:10px;',
+            'line-height:1;',
+            'padding:4px 6px;',
+            'border-radius:999px;',
+            'border:1px solid rgba(255,255,255,0.25);',
+            'background:rgba(0,0,0,0.62);',
+            'color:#ddd;',
+            'cursor:pointer;',
+            'opacity:0.72;'
+        ].join('');
+
+        button.addEventListener('click', ev => {
+            ev.preventDefault();
+            ev.stopPropagation();
+
+            const old = document.querySelector('.embokoun-settings-menu');
+            const wasOpen = !!old;
+            closeSettingsMenus();
+            if (!wasOpen) openSettingsMenu(button);
+        });
+
+        return button;
+    }
+
     function makeSourceLink(url, serviceName) {
         const a = document.createElement('a');
         a.href = url;
@@ -193,6 +250,78 @@
         a.textContent = `[ Open original ${serviceName} link ]`;
         a.style.cssText = 'align-self:flex-end;margin-top:6px;font-size:11px;color:#888;text-decoration:none;font-family:sans-serif;';
         return a;
+    }
+
+    function makeDownloadPanel(service, ctx) {
+        const panel = document.createElement('div');
+        panel.setAttribute('data-embokoun-node', '1');
+        panel.style.cssText = [
+            'position:relative;',
+            'width:100%;',
+            service.style || 'aspect-ratio:16/9;background:#1a1a1a;',
+            'background:#1a1a1a;',
+            'color:#ddd;',
+            'border-radius:4px;',
+            'display:flex;',
+            'align-items:center;',
+            'justify-content:center;',
+            'font-family:sans-serif;',
+            'font-size:13px;',
+            'text-align:center;',
+            'padding:12px;',
+            'box-sizing:border-box;',
+            'box-shadow:0 2px 8px rgba(0,0,0,0.2);'
+        ].join('');
+
+        panel.appendChild(makeSettingsButton());
+
+        const box = document.createElement('div');
+        box.style.cssText = 'display:flex;flex-direction:column;gap:8px;align-items:center;max-width:95%;';
+
+        const status = document.createElement('div');
+        status.textContent = `Loading ${service.label}...`;
+
+        const hint = document.createElement('div');
+        hint.style.cssText = 'font-size:11px;color:#aaa;';
+        hint.textContent = `Safe limit: ${root.blob ? root.blob.formatBytes(root.config.blobMaxBytes()) : '?'}`;
+
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:8px;justify-content:center;flex-wrap:wrap;';
+
+        const cancel = smallButton('Cancel');
+
+        const original = document.createElement('a');
+        original.href = ctx.originalUrl;
+        original.target = '_blank';
+        original.rel = 'noopener noreferrer';
+        original.textContent = 'Open original';
+        original.style.cssText = 'font-size:12px;color:#aaa;align-self:center;';
+
+        row.appendChild(cancel);
+        row.appendChild(original);
+        box.appendChild(status);
+        box.appendChild(hint);
+        box.appendChild(row);
+        panel.appendChild(box);
+
+        return {
+            panel,
+            setStatus(text) {
+                status.textContent = text;
+            },
+            setCancel(fn) {
+                cancel.onclick = ev => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    fn();
+                };
+            },
+            disableCancel() {
+                cancel.disabled = true;
+                cancel.style.opacity = '0.5';
+                cancel.style.cursor = 'default';
+            }
+        };
     }
 
     function applyPlaceholderPreview(placeholder, service, ctx) {
@@ -227,26 +356,38 @@
             'cursor:pointer;',
             'box-shadow:0 2px 8px rgba(0,0,0,0.2);',
             'background-position:center;',
-            'background-size:cover;'
+            'background-size:cover;',
+            'transition:background 0.2s ease;'
         ].join('');
 
         applyPlaceholderPreview(placeholder, service, ctx);
+        placeholder.appendChild(makeSettingsButton());
 
         const button = document.createElement('div');
         button.textContent = `Load ${service.label}`;
-        button.style.cssText = 'background:rgba(0,0,0,0.75);color:#fff;padding:10px 20px;border-radius:20px;font-family:sans-serif;font-size:13px;font-weight:bold;pointer-events:none;border:1px solid rgba(255,255,255,0.2);';
+        button.style.cssText = 'background:rgba(0,0,0,0.75);color:#fff;padding:10px 20px;border-radius:20px;font-family:sans-serif;font-size:13px;font-weight:bold;pointer-events:none;border:1px solid rgba(255,255,255,0.2);transition:all 0.2s;';
         placeholder.appendChild(button);
+
+        placeholder.addEventListener('mouseenter', () => {
+            button.style.background = 'rgba(180,0,0,0.9)';
+        });
+
+        placeholder.addEventListener('mouseleave', () => {
+            button.style.background = 'rgba(0,0,0,0.75)';
+        });
 
         placeholder.addEventListener('click', async () => {
             if (placeholder.dataset.loading === '1') return;
+            closeSettingsMenus();
             placeholder.dataset.loading = '1';
             button.textContent = 'Loading...';
+            button.style.background = 'rgba(100,100,100,0.9)';
             try {
-                const node = await root.render.embed(ctx);
-                placeholder.replaceWith(node);
+                const node = await root.render.embed(ctx, placeholder);
+                if (placeholder.isConnected) placeholder.replaceWith(node);
             } catch (e) {
                 root.log.error(service.key, 'embed failed', e);
-                if (service.fallback) placeholder.replaceWith(service.fallback(ctx));
+                if (placeholder.isConnected && service.fallback) placeholder.replaceWith(service.fallback(ctx));
                 else button.textContent = 'Failed';
             }
         });
@@ -268,10 +409,15 @@
         if (!ev.target.closest || !ev.target.closest('.embokoun-settings-menu')) closeSettingsMenus();
     }, true);
 
+    window.addEventListener('scroll', closeSettingsMenus, true);
+    window.addEventListener('resize', closeSettingsMenus, true);
+
     root.ui = {
         openSettingsMenu,
         closeSettingsMenus,
+        makeSettingsButton,
         makeSourceLink,
+        makeDownloadPanel,
         makePlaceholder,
         iframe
     };
