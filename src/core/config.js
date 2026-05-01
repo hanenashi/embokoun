@@ -9,7 +9,10 @@
         logLevel: 'info',
         blobMaxMb: 80,       // 0 means no limit
         blobMaxActive: 3,
-        telegramPlaceholderSize: 'compact',
+        showSourceLinks: false,
+        autoLoadServices: {},
+        telegramPlaceholderSize: 'line',
+        telegramPlaceholderThumbs: false,
         enabledServices: {}
     };
 
@@ -28,6 +31,10 @@
         return allowed.includes(value) ? value : fallback;
     }
 
+    function sanitizeBool(value, fallback) {
+        return typeof value === 'boolean' ? value : fallback;
+    }
+
     function load() {
         try {
             const raw = localStorage.getItem(KEY);
@@ -41,7 +48,13 @@
                 logLevel: ['off', 'error', 'warn', 'info', 'debug', 'trace'].includes(parsed.logLevel) ? parsed.logLevel : base.logLevel,
                 blobMaxMb: sanitizeNumberChoice(parsed.blobMaxMb, [0, 25, 50, 80, 120, 200], base.blobMaxMb),
                 blobMaxActive: sanitizeNumberChoice(parsed.blobMaxActive, [1, 2, 3, 5], base.blobMaxActive),
-                telegramPlaceholderSize: sanitizeStringChoice(parsed.telegramPlaceholderSize, ['compact', 'medium', 'large'], base.telegramPlaceholderSize),
+                showSourceLinks: sanitizeBool(parsed.showSourceLinks, base.showSourceLinks),
+                telegramPlaceholderSize: sanitizeStringChoice(parsed.telegramPlaceholderSize, ['line', 'compact', 'medium', 'large'], base.telegramPlaceholderSize),
+                telegramPlaceholderThumbs: sanitizeBool(parsed.telegramPlaceholderThumbs, base.telegramPlaceholderThumbs),
+                autoLoadServices: {
+                    ...base.autoLoadServices,
+                    ...(parsed.autoLoadServices || {})
+                },
                 enabledServices: {
                     ...base.enabledServices,
                     ...(parsed.enabledServices || {})
@@ -84,6 +97,16 @@
 
         setServiceEnabled(key, enabled) {
             settings.enabledServices[key] = !!enabled;
+            save();
+        },
+
+        isServiceAutoLoad(key) {
+            return settings.autoLoadServices && settings.autoLoadServices[key] === true;
+        },
+
+        setServiceAutoLoad(key, enabled) {
+            settings.autoLoadServices = settings.autoLoadServices || {};
+            settings.autoLoadServices[key] = !!enabled;
             save();
         },
 
