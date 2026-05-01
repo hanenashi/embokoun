@@ -10,6 +10,16 @@
         return !!node.closest('[data-embokoun-node="1"]');
     }
 
+    function shouldAutoLoad(service) {
+        if (!service) return false;
+        if (service.lazy === false) return true;
+        return !!(root.config && root.config.isServiceAutoLoad && root.config.isServiceAutoLoad(service.key));
+    }
+
+    function shouldShowSourceLink() {
+        return !!(root.config && root.config.get && root.config.get('showSourceLinks'));
+    }
+
     function processLink(link) {
         if (!link || link.nodeType !== 1) return;
         if (link.dataset.embokounDone === '1') return;
@@ -37,7 +47,7 @@
 
             const ctx = { match, originalUrl: url, link, service };
 
-            if (service.lazy === false) {
+            if (shouldAutoLoad(service)) {
                 root.render.embed(ctx).then(node => {
                     wrapper.insertBefore(node, wrapper.firstChild);
                 }).catch(err => {
@@ -48,7 +58,9 @@
                 wrapper.appendChild(root.ui.makePlaceholder(service, ctx));
             }
 
-            wrapper.appendChild(root.ui.makeSourceLink(url, service.label));
+            if (shouldShowSourceLink()) {
+                wrapper.appendChild(root.ui.makeSourceLink(url, service.label));
+            }
 
             if (link.parentNode) {
                 link.parentNode.insertBefore(wrapper, link.nextSibling);
@@ -58,7 +70,7 @@
                 link.style.display = 'none';
             }
 
-            root.log.info('dom', 'embedded placeholder', service.key, url);
+            root.log.info('dom', shouldAutoLoad(service) ? 'auto-loading' : 'embedded placeholder', service.key, url);
             return;
         }
     }
