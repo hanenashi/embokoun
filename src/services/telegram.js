@@ -16,6 +16,13 @@
         return textarea.value;
     }
 
+    function uniqPush(list, item, keyName) {
+        if (!item) return;
+        const key = item[keyName || 'url'];
+        if (!key) return;
+        if (!list.some(existing => existing[keyName || 'url'] === key)) list.push(item);
+    }
+
     function getText(url, referer, timeout) {
         timeout = timeout || 15000;
         return new Promise((resolve, reject) => {
@@ -50,39 +57,83 @@
         return match ? decodeHtml(match[2]) : '';
     }
 
-    function extractVideoUrl(doc, baseUrl) {
-        const video = doc.querySelector('video[src], video source[src], source[type*="video"][src]');
-        if (video && video.getAttribute('src')) return absUrl(video.getAttribute('src'), baseUrl);
+    function extractVideoItems(doc, baseUrl) {
+        const items = [];
+
+        doc.querySelectorAll('.tgme_widget_message_video_player, video[src], video source[src], source[type*="video"][src]').forEach(el => {
+            const videoEl = el.matches && el.matches('video[src], video source[src], source[type*="video"][src]')
+                ? el
+                : el.querySelector('video[src], video source[src], source[type*="video"][src]');
+            const src = videoEl && videoEl.getAttribute('src');
+            if (!src) return;
+
+            let thumb = '';
+            const thumbEl = el.querySelector ? el.querySelector('.tgme_widget_message_video_thumb') : null;
+            if (thumbEl) thumb = extractBackgroundUrl((thumbEl.style && thumbEl.style.backgroundImage) || thumbEl.getAttribute('style'));
+
+            const durationEl = el.querySelector ? el.querySelector('.message_video_duration') : null;
+            const href = el.getAttribute && el.getAttribute('href');
+
+            uniqPush(items, {
+                type: 'video',
+                url: absUrl(src, baseUrl),
+                thumbUrl: absUrl(thumb, baseUrl),
+                duration: durationEl ? durationEl.textContent.trim() : '',
+                href: absUrl(href, baseUrl)
+            });
+        });
 
         const meta = doc.querySelector('meta[property="og:video"], meta[property="og:video:secure_url"], meta[name="twitter:player:stream"]');
-        if (meta && meta.getAttribute('content')) return absUrl(meta.getAttribute('content'), baseUrl);
+        if (meta && meta.getAttribute('content')) {
+            uniqPush(items, { type: 'video', url: absUrl(meta.getAttribute('content'), baseUrl), thumbUrl: '', duration: '', href: '' });
+        }
 
         const html = doc.documentElement ? doc.documentElement.innerHTML : '';
-        const match = html.match(/https?:\\?\/\\?\/[^"'<>\s]+?\.mp4[^"'<>\s]*/i) ||
-                      html.match(/https?:\\?\/\\?\/[^"'<>\s]+?cdn-telegram\.org\\?\/file\\?\/[^"'<>\s]+/i);
-        if (!match) return '';
+        const matches = html.match(/https?:\\?\/\\?\/[^"'<>\s]+?\.mp4[^"'<>\s]*/ig) || [];
+        matches.forEach(match => {
+            uniqPush(items, { type: 'video', url: absUrl(decodeHtml(match).replace(/\\\//g, '/'), baseUrl), thumbUrl: '', duration: '', href: '' });
+        });
 
-        return absUrl(decodeHtml(match[0]).replace(/\\\//g, '/'), baseUrl);
+        return items;
+    }
+
+    function extractVideoUrl(doc, baseUrl) {
+        const first = extractVideoItems(doc, baseUrl)[0];
+        return first ? first.url : '';
+    }
+
+    function extractImageItems(doc, baseUrl) {
+        const items = [];
+
+        doc.querySelectorAll('.tgme_widget_message_photo_wrap').forEach(photo => {
+            const bg = extractBackgroundUrl((photo.style && photo.style.backgroundImage) || photo.getAttribute('style'));
+            const href = photo.getAttribute('href');
+            uniqPush(items, {
+                type: 'image',
+                url: absUrl(bg, baseUrl),
+                href: absUrl(href, baseUrl)
+            });
+        });
+
+        doc.querySelectorAll('.tgme_widget_message_photo_wrap img[src], .tgme_widget_message_bubble img[src], img.tgme_widget_message_photo[src]').forEach(img => {
+            uniqPush(items, {
+                type: 'image',
+                url: absUrl(img.getAttribute('src'), baseUrl),
+                href: ''
+            });
+        });
+
+        const meta = doc.querySelector('meta[property="og:image"], meta[name="twitter:image"]');
+        if (meta && meta.getAttribute('content')) {
+            uniqPush(items, { type: 'image', url: absUrl(meta.getAttribute('content'), baseUrl), href: '' });
+        }
+
+        return items;
     }
 
     function extractImageUrl(doc, baseUrl) {
-        const photo = doc.querySelector('.tgme_widget_message_photo_wrap');
-        if (photo) {
-            const bg = extractBackgroundUrl(photo.style && photo.style.backgroundImage);
-            if (bg) return absUrl(bg, baseUrl);
-
-            const styleAttr = photo.getAttribute('style') || '';
-            const bg2 = extractBackgroundUrl(styleAttr);
-            if (bg2) return absUrl(bg2, baseUrl);
-        }
-
-        const img = doc.querySelector('.tgme_widget_message_photo_wrap img[src], .tgme_widget_message_bubble img[src], img.tgme_widget_message_photo[src]');
-        if (img && img.getAttribute('src')) return absUrl(img.getAttribute('src'), baseUrl);
-
-        const meta = doc.querySelector('meta[property="og:image"], meta[name="twitter:image"]');
-        if (meta && meta.getAttribute('content')) return absUrl(meta.getAttribute('content'), baseUrl);
-
-        return '';
+        const first = extractImageItems(doc, baseUrl)[0];
+        return first ? first.url : '';
     }
 
     function cleanTelegramText(node, baseUrl) {
@@ -96,6 +147,7 @@
             a.href = absUrl(a.getAttribute('href'), baseUrl);
             a.target = '_blank';
             a.rel = 'noopener noreferrer';
+            a.removeAttribute('onclick');
         });
 
         clone.querySelectorAll('img[src]').forEach(img => {
@@ -116,8 +168,65 @@
     }
 
     function extractMeta(doc) {
-        const meta = doc.querySelector('.tgme_widget_message_meta');
+        const meta = doc.querySelector('.tgme_widget_message_info');
         return meta ? meta.textContent.replace(/\s+/g, ' ').trim() : '';
+    }
+
+    function mediaTile(item, index, total) {
+        const wrap = document.createElement('a');
+        wrap.href = item.href || item.url || '#';
+        wrap.target = '_blank';
+        wrap.rel = 'noopener noreferrer';
+        wrap.style.cssText = [
+            'position:relative;',
+            'display:block;',
+            'overflow:hidden;',
+            'background:#111;',
+            'min-height:120px;',
+            total === 1 ? 'aspect-ratio:16/9;' : 'aspect-ratio:1/1;'
+        ].join('');
+
+        const img = document.createElement('img');
+        img.src = item.thumbUrl || item.url;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+        wrap.appendChild(img);
+
+        if (item.type === 'video') {
+            const play = document.createElement('div');
+            play.textContent = '▶';
+            play.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:46px;height:46px;border-radius:50%;background:rgba(0,0,0,0.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:21px;text-indent:3px;';
+            wrap.appendChild(play);
+
+            const label = document.createElement('div');
+            label.textContent = item.duration ? `Video ${item.duration}` : 'Video';
+            label.style.cssText = 'position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,0.65);color:#fff;border-radius:10px;padding:3px 7px;font:11px sans-serif;';
+            wrap.appendChild(label);
+        }
+
+        return wrap;
+    }
+
+    function appendMediaGrid(card, mediaItems) {
+        if (!mediaItems || !mediaItems.length) return;
+
+        const grid = document.createElement('div');
+        const count = Math.min(mediaItems.length, 4);
+        grid.style.cssText = [
+            'display:grid;',
+            count === 1 ? 'grid-template-columns:1fr;' : 'grid-template-columns:repeat(2,1fr);',
+            'gap:2px;',
+            'background:#111;'
+        ].join('');
+
+        mediaItems.slice(0, 4).forEach((item, index) => {
+            const tile = mediaTile(item, index, count);
+            if (count === 3 && index === 0) tile.style.gridRow = 'span 2';
+            grid.appendChild(tile);
+        });
+
+        card.appendChild(grid);
     }
 
     function makeCard(data) {
@@ -153,7 +262,9 @@
         header.appendChild(title);
         card.appendChild(header);
 
-        if (data.imageUrl) {
+        appendMediaGrid(card, data.mediaItems || []);
+
+        if ((!data.mediaItems || !data.mediaItems.length) && data.imageUrl) {
             const img = document.createElement('img');
             img.src = data.imageUrl;
             img.loading = 'lazy';
@@ -176,15 +287,29 @@
         meta.textContent = data.meta || 'Telegram post';
         meta.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
 
+        const links = document.createElement('span');
+        links.style.cssText = 'display:flex;gap:10px;flex:0 0 auto;';
+
+        if (data.videoUrl) {
+            const play = document.createElement('a');
+            play.href = data.videoUrl;
+            play.target = '_blank';
+            play.rel = 'noopener noreferrer';
+            play.textContent = 'Video';
+            play.style.cssText = 'color:#168acd;text-decoration:none;font-weight:bold;';
+            links.appendChild(play);
+        }
+
         const link = document.createElement('a');
         link.href = data.originalUrl;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
         link.textContent = 'Open';
-        link.style.cssText = 'color:#168acd;text-decoration:none;font-weight:bold;flex:0 0 auto;';
+        link.style.cssText = 'color:#168acd;text-decoration:none;font-weight:bold;';
+        links.appendChild(link);
 
         footer.appendChild(meta);
-        footer.appendChild(link);
+        footer.appendChild(links);
         card.appendChild(footer);
 
         return card;
@@ -218,29 +343,41 @@
             const html = await getText(embedUrl, 'https://t.me/');
             const doc = parseEmbedHtml(html);
 
-            const videoUrl = extractVideoUrl(doc, embedUrl);
-            if (videoUrl) {
-                root.log.info('telegram', 'resolved video', videoUrl);
+            const videoItems = extractVideoItems(doc, embedUrl);
+            const imageItems = extractImageItems(doc, embedUrl);
+            const textNode = doc.querySelector('.tgme_widget_message_text');
+            const textHtml = cleanTelegramText(textNode, embedUrl);
+            const author = extractAuthor(doc);
+            const meta = extractMeta(doc);
+            const mediaItems = [];
+            videoItems.forEach(item => uniqPush(mediaItems, item));
+            imageItems.forEach(item => uniqPush(mediaItems, item));
+
+            const isPureSingleVideo = videoItems.length === 1 && imageItems.length === 0 && !textHtml;
+            if (isPureSingleVideo) {
+                root.log.info('telegram', 'resolved pure video', videoItems[0].url);
                 return {
                     kind: 'video-url',
-                    url: videoUrl,
+                    url: videoItems[0].url,
                     referer: 'https://t.me/',
                     aspect: '16/9',
                     reason: 'telegram-video'
                 };
             }
 
-            const imageUrl = extractImageUrl(doc, embedUrl);
-            const textNode = doc.querySelector('.tgme_widget_message_text');
-            const textHtml = cleanTelegramText(textNode, embedUrl);
-            const author = extractAuthor(doc);
-            const meta = extractMeta(doc);
-
-            if (imageUrl || textHtml) {
-                root.log.info('telegram', 'resolved native card', channel, postId);
+            if (mediaItems.length || textHtml) {
+                root.log.info('telegram', 'resolved native card', channel, postId, `media=${mediaItems.length}`);
                 return {
                     kind: 'native-node',
-                    node: makeCard({ imageUrl, textHtml, author, meta, originalUrl: publicUrl }),
+                    node: makeCard({
+                        imageUrl: imageItems[0] && imageItems[0].url,
+                        videoUrl: videoItems[0] && videoItems[0].url,
+                        mediaItems,
+                        textHtml,
+                        author,
+                        meta,
+                        originalUrl: publicUrl
+                    }),
                     reason: 'telegram-card'
                 };
             }
