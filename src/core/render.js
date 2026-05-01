@@ -74,7 +74,61 @@
         return wrap;
     }
 
-    async function renderResolved(ctx, result) {
+    async function renderBlobVideo(ctx, result, placeholderNode) {
+        const loading = root.ui.makeDownloadPanel(ctx.service, ctx);
+        let cancelled = false;
+        let download = null;
+
+        if (placeholderNode && placeholderNode.isConnected) {
+            placeholderNode.replaceWith(loading.panel);
+        }
+
+        download = root.blob.download(result.url, {
+            referer: result.referer || ctx.originalUrl,
+            area: ctx.service.key,
+            maxBytes: result.maxBytes,
+            onProgress(progress) {
+                const loaded = progress.loaded || 0;
+                const total = progress.total || 0;
+
+                if (total > 0) {
+                    loading.setStatus(`Downloading ${ctx.service.label}... ${root.blob.formatBytes(loaded)} / ${root.blob.formatBytes(total)}`);
+                } else if (loaded > 0) {
+                    loading.setStatus(`Downloading ${ctx.service.label}... ${root.blob.formatBytes(loaded)}`);
+                }
+
+                root.log.trace(ctx.service.key, 'download progress', loaded, total);
+            }
+        });
+
+        loading.setCancel(() => {
+            cancelled = true;
+            if (download && typeof download.abort === 'function') download.abort();
+
+            if (loading.panel.isConnected) {
+                loading.panel.replaceWith(root.ui.makePlaceholder(ctx.service, ctx));
+            }
+        });
+
+        try {
+            const blob = await download.promise;
+
+            if (cancelled) {
+                if (blob && blob.blobUrl) URL.revokeObjectURL(blob.blobUrl);
+                throw new Error('Download cancelled');
+            }
+
+            return root.blob.makeVideoFromBlob(blob.blobUrl, ctx.service, () => root.ui.makePlaceholder(ctx.service, ctx));
+        } catch (e) {
+            if (cancelled) throw e;
+
+            loading.setStatus(`${ctx.service.label} blob load failed. Opening fallback...`);
+            loading.disableCancel();
+            throw e;
+        }
+    }
+
+    async function renderResolved(ctx, result, placeholderNode) {
         if (!result || result.kind === 'none') {
             throw new Error((result && result.reason) || 'No renderable result');
         }
@@ -109,29 +163,19 @@
                 return makeVideo(result.url, result);
             }
 
-            const download = root.blob.download(result.url, {
-                referer: result.referer || ctx.originalUrl,
-                area: ctx.service.key,
-                maxBytes: result.maxBytes,
-                onProgress(progress) {
-                    root.log.trace(ctx.service.key, 'download progress', progress.loaded, progress.total);
-                }
-            });
-
-            const blob = await download.promise;
-            return root.blob.makeVideoFromBlob(blob.blobUrl, ctx.service, () => root.ui.makePlaceholder(ctx.service, ctx));
+            return renderBlobVideo(ctx, result, placeholderNode);
         }
 
         throw new Error(`Unknown render kind: ${result.kind}`);
     }
 
-    async function embed(ctx) {
+    async function embed(ctx, placeholderNode) {
         const service = ctx && ctx.service;
         if (!service) throw new Error('Missing service in render context');
 
         if (typeof service.resolve === 'function') {
             const result = await service.resolve(ctx);
-            return renderResolved(ctx, result);
+            return renderResolved(ctx, result, placeholderNode);
         }
 
         if (typeof service.embed === 'function') {
