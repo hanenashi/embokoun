@@ -181,6 +181,7 @@
             }
         };
 
+        video.embokounUnload = record.unload;
         track(record);
         return video;
     }
