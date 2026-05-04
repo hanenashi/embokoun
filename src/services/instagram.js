@@ -17,6 +17,14 @@
         return textarea.value;
     }
 
+    function xmlEscape(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
     function looseDecodeUrl(value) {
         let out = decodeHtml(String(value || ''));
         out = out.replace(/\\u0026/g, '&');
@@ -122,9 +130,66 @@
         return desc ? desc.replace(/\s+/g, ' ').trim() : '';
     }
 
+    function cleanText(text) {
+        return String(text || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function wrapForSvg(text, maxChars, maxLines) {
+        const words = cleanText(text).split(' ').filter(Boolean);
+        const lines = [];
+        let line = '';
+        for (const word of words) {
+            const next = line ? `${line} ${word}` : word;
+            if (next.length > maxChars && line) {
+                lines.push(line);
+                line = word;
+                if (lines.length >= maxLines) break;
+            } else {
+                line = next;
+            }
+        }
+        if (line && lines.length < maxLines) lines.push(line);
+        if (!lines.length) lines.push('Preview unavailable');
+        if (lines.length === maxLines && words.join(' ').length > lines.join(' ').length) {
+            lines[lines.length - 1] = lines[lines.length - 1].replace(/[.,;:!?]*$/, '') + '...';
+        }
+        return lines;
+    }
+
+    function makePreviewSvg(title, description) {
+        const heading = cleanText(title || 'Instagram preview unavailable').replace(/• Instagram.*$/i, '').slice(0, 70) || 'Instagram preview unavailable';
+        const bodyText = cleanText(description || 'This post may require sign-in, app access, or account permissions.');
+        const lines = wrapForSvg(bodyText, 48, 4);
+        const lineSvg = lines.map((line, i) => `<text x="102" y="${180 + i * 40}" font-size="28" fill="#262626">${xmlEscape(line)}</text>`).join('');
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+<defs><linearGradient id="ig" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f58529"/><stop offset="0.35" stop-color="#dd2a7b"/><stop offset="0.7" stop-color="#8134af"/><stop offset="1" stop-color="#515bd4"/></linearGradient></defs>
+<rect width="800" height="450" fill="#111"/>
+<rect x="54" y="45" width="692" height="360" rx="18" fill="#ffffff"/>
+<rect x="88" y="74" width="50" height="50" rx="13" fill="url(#ig)"/>
+<text x="113" y="106" text-anchor="middle" font-size="21" font-family="Arial, sans-serif" font-weight="700" fill="#fff">IG</text>
+<text x="158" y="108" font-size="30" font-family="Arial, sans-serif" font-weight="700" fill="#262626">Instagram</text>
+<line x1="78" y1="142" x2="722" y2="142" stroke="#efefef" stroke-width="2"/>
+<text x="102" y="154" font-size="0" fill="transparent">.</text>
+<text x="102" y="160" font-size="29" font-family="Arial, sans-serif" font-weight="700" fill="#262626">${xmlEscape(heading)}</text>
+<g font-family="Arial, sans-serif">${lineSvg}</g>
+<text x="102" y="365" font-size="22" font-family="Arial, sans-serif" font-weight="700" fill="#00376b">Open on Instagram</text>
+</svg>`;
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    }
+
     async function fetchThumb(publicUrl) {
         if (thumbCache.has(publicUrl)) return thumbCache.get(publicUrl);
-        const promise = getText(publicUrl, 12000).then(html => extractImageUrl(html, publicUrl)).catch(() => '');
+        const promise = getText(publicUrl, 12000).then(html => {
+            const image = extractImageUrl(html, publicUrl);
+            if (image) return image;
+            const title = extractTitle(html);
+            const description = extractDescription(html);
+            root.log.info('instagram', 'using generated placeholder preview', publicUrl);
+            return makePreviewSvg(title, description);
+        }).catch(err => {
+            root.log.warn('instagram', 'thumbnail metadata failed; generated fallback', publicUrl, err);
+            return makePreviewSvg('Instagram preview unavailable', 'This post may require sign-in, app access, or account permissions.');
+        });
         thumbCache.set(publicUrl, promise);
         return promise;
     }
@@ -241,8 +306,8 @@
                 return { kind: 'native-node', node: makeCard({ imageUrl, title, description, originalUrl: publicUrl }), reason: 'instagram-card' };
             }
 
-            root.log.warn('instagram', 'no useful data found; iframe fallback', shortcode);
-            return { kind: 'iframe', url: `https://www.instagram.com/${kind}/${encodeURIComponent(shortcode)}/embed/`, widthMode: 'normal', aspect: '4/5', reason: 'instagram-iframe' };
+            root.log.warn('instagram', 'no useful data found; rendering unavailable card', shortcode);
+            return { kind: 'native-node', node: makeCard({ title: 'Instagram preview unavailable', description: 'This post may require sign-in, app access, or account permissions.', originalUrl: publicUrl }), reason: 'instagram-unavailable-card' };
         },
 
         fallback(ctx) {
