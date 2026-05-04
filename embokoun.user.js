@@ -18,6 +18,7 @@
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/core/config.js
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/core/log.js
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/core/ui.js
+// @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/core/icon.js
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/core/blob.js
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/core/shell.js
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/core/render.js
