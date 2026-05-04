@@ -297,8 +297,15 @@
         };
     }
 
-    function setPlaceholderImage(placeholder, imageUrl) {
-        if (!imageUrl || !placeholder || !placeholder.isConnected) return;
+    function setPlaceholderImage(placeholder, imageUrl, serviceKey) {
+        if (!imageUrl) {
+            root.log.warn('ui', 'placeholder thumb empty', serviceKey || '?');
+            return;
+        }
+        if (!placeholder || !placeholder.isConnected) {
+            root.log.warn('ui', 'placeholder thumb skipped disconnected', serviceKey || '?', imageUrl);
+            return;
+        }
 
         let img = placeholder.querySelector('img[data-embokoun-placeholder-thumb="1"]');
         if (!img) {
@@ -309,37 +316,37 @@
             img.decoding = 'async';
             img.alt = '';
             img.style.cssText = [
-                'position:absolute;',
-                'inset:0;',
-                'width:100%;',
-                'height:100%;',
-                'object-fit:cover;',
-                'display:block;',
-                'border-radius:inherit;',
-                'opacity:0.72;',
-                'z-index:0;',
-                'pointer-events:none;',
+                'position:absolute;', 'inset:0;', 'width:100%;', 'height:100%;', 'object-fit:cover;',
+                'display:block;', 'border-radius:inherit;', 'opacity:0.72;', 'z-index:0;', 'pointer-events:none;',
                 'background:#111;'
             ].join('');
+            img.onload = () => root.log.info('ui', 'placeholder thumb loaded', serviceKey || '?', imageUrl);
+            img.onerror = () => root.log.warn('ui', 'placeholder thumb image error', serviceKey || '?', imageUrl);
             placeholder.insertBefore(img, placeholder.firstChild);
         }
 
         img.src = imageUrl;
         placeholder.style.backgroundColor = '#111';
-        root.log.debug('ui', 'placeholder thumb applied', imageUrl);
+        root.log.info('ui', 'placeholder thumb applied', serviceKey || '?', imageUrl);
     }
 
     function applyPlaceholderPreview(placeholder, service, ctx) {
-        if (!root.config.get('placeholderThumbs')) return;
+        const enabled = !!root.config.get('placeholderThumbs');
+        root.log.debug('ui', 'placeholder preview check', service && service.key, `enabled=${enabled}`, `hasProvider=${!!(service && service.placeholderImage)}`);
+        if (!enabled) return;
         if (!service || typeof service.placeholderImage !== 'function') return;
 
         try {
             const result = service.placeholderImage(ctx);
-            if (!result) return;
+            root.log.debug('ui', 'placeholder provider result', service.key, result);
+            if (!result) {
+                root.log.warn('ui', 'placeholder provider empty', service.key);
+                return;
+            }
             if (typeof result.then === 'function') {
-                result.then(url => setPlaceholderImage(placeholder, url)).catch(e => root.log.warn(service.key || 'ui', 'placeholder image failed', e));
+                result.then(url => setPlaceholderImage(placeholder, url, service.key)).catch(e => root.log.warn(service.key || 'ui', 'placeholder image failed', e));
             } else {
-                setPlaceholderImage(placeholder, result);
+                setPlaceholderImage(placeholder, result, service.key);
             }
         } catch (e) {
             root.log.warn(service.key || 'ui', 'placeholder image failed', e);
@@ -356,6 +363,7 @@
 
     function makePlaceholder(service, ctx) {
         const isLine = (root.config.get('placeholderMode') || 'line') === 'line';
+        root.log.debug('ui', 'make placeholder', service && service.key, `mode=${root.config.get('placeholderMode')}`, `thumbs=${root.config.get('placeholderThumbs')}`);
         const placeholder = document.createElement('div');
         placeholder.setAttribute('data-embokoun-node', '1');
         placeholder.style.cssText = [
