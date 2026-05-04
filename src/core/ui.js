@@ -28,9 +28,7 @@
         left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
 
         let top = rect.bottom + margin;
-        if (top + approxHeight > window.innerHeight) {
-            top = Math.max(margin, rect.top - approxHeight - margin);
-        }
+        if (top + approxHeight > window.innerHeight) top = Math.max(margin, rect.top - approxHeight - margin);
 
         menu.style.left = `${left}px`;
         menu.style.top = `${top}px`;
@@ -42,22 +40,11 @@
         const menu = document.createElement('div');
         menu.className = 'embokoun-settings-menu';
         menu.style.cssText = [
-            'position:fixed;',
-            'z-index:2147483647;',
-            'width:min(360px, calc(100vw - 20px));',
-            'max-height:calc(100vh - 20px);',
-            'overflow:auto;',
-            'background:rgba(18,18,18,0.97);',
-            'color:#eee;',
-            'border:1px solid rgba(255,255,255,0.22);',
-            'border-radius:8px;',
-            'box-shadow:0 4px 18px rgba(0,0,0,0.45);',
-            'font-family:sans-serif;',
-            'font-size:12px;',
-            'padding:10px;',
-            'box-sizing:border-box;',
-            'text-align:left;',
-            'line-height:1.3;'
+            'position:fixed;', 'z-index:2147483647;', 'width:min(360px, calc(100vw - 20px));',
+            'max-height:calc(100vh - 20px);', 'overflow:auto;', 'background:rgba(18,18,18,0.97);',
+            'color:#eee;', 'border:1px solid rgba(255,255,255,0.22);', 'border-radius:8px;',
+            'box-shadow:0 4px 18px rgba(0,0,0,0.45);', 'font-family:sans-serif;', 'font-size:12px;',
+            'padding:10px;', 'box-sizing:border-box;', 'text-align:left;', 'line-height:1.3;'
         ].join('');
 
         positionSettingsMenu(menu, anchor);
@@ -72,6 +59,10 @@
         menu.appendChild(selectRow('Log level', 'logLevel', ['off', 'error', 'warn', 'info', 'debug', 'trace']));
         menu.appendChild(checkRow('Show source links', 'showSourceLinks', () => root.dom && root.dom.scan(document.body)));
 
+        menu.appendChild(sectionTitle('Placeholders'));
+        menu.appendChild(selectRow('Mode', 'placeholderMode', ['line', 'tombstone']));
+        menu.appendChild(checkRow('Fetch thumbnails', 'placeholderThumbs'));
+
         menu.appendChild(sectionTitle('Blob loading'));
         menu.appendChild(numberSelectRow('Blob size limit', 'blobMaxMb', [0, 25, 50, 80, 120, 200], value => value === 0 ? 'No limit' : `${value} MB`));
         menu.appendChild(numberSelectRow('Loaded blob videos', 'blobMaxActive', [1, 2, 3, 5], value => String(value), () => {
@@ -79,9 +70,7 @@
         }));
 
         menu.appendChild(sectionTitle('Services'));
-        root.services.list.forEach(service => {
-            menu.appendChild(serviceSection(service));
-        });
+        root.services.list.forEach(service => menu.appendChild(serviceSection(service)));
 
         const buttons = document.createElement('div');
         buttons.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;';
@@ -111,7 +100,7 @@
         menu.appendChild(buttons);
 
         const note = document.createElement('div');
-        note.textContent = 'Settings are saved in this browser only.';
+        note.textContent = 'Settings are saved in this browser only. Refresh page to redraw existing placeholders.';
         note.style.cssText = 'font-size:10px;color:#888;margin-top:8px;';
         menu.appendChild(note);
 
@@ -129,13 +118,10 @@
     function selectRow(labelText, settingName, values, afterChange) {
         const row = document.createElement('label');
         row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0;color:#ccc;';
-
         const label = document.createElement('span');
         label.textContent = labelText;
-
         const select = document.createElement('select');
         select.style.cssText = 'background:#222;color:#eee;border:1px solid #666;border-radius:4px;padding:2px 4px;max-width:150px;';
-
         values.forEach(value => {
             const option = document.createElement('option');
             option.value = value;
@@ -143,12 +129,10 @@
             if (root.config.get(settingName) === value) option.selected = true;
             select.appendChild(option);
         });
-
         select.onchange = () => {
             root.config.set(settingName, select.value);
             if (typeof afterChange === 'function') afterChange();
         };
-
         row.appendChild(label);
         row.appendChild(select);
         return row;
@@ -157,13 +141,10 @@
     function numberSelectRow(labelText, settingName, values, labelMaker, afterChange) {
         const row = document.createElement('label');
         row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0;color:#ccc;';
-
         const label = document.createElement('span');
         label.textContent = labelText;
-
         const select = document.createElement('select');
         select.style.cssText = 'background:#222;color:#eee;border:1px solid #666;border-radius:4px;padding:2px 4px;max-width:150px;';
-
         values.forEach(value => {
             const option = document.createElement('option');
             option.value = String(value);
@@ -171,12 +152,10 @@
             if (Number(root.config.get(settingName)) === value) option.selected = true;
             select.appendChild(option);
         });
-
         select.onchange = () => {
             root.config.set(settingName, Number(select.value));
             if (typeof afterChange === 'function') afterChange();
         };
-
         row.appendChild(label);
         row.appendChild(select);
         return row;
@@ -185,10 +164,8 @@
     function checkRow(labelText, settingName, afterChange) {
         const row = document.createElement('label');
         row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0;color:#ccc;';
-
         const label = document.createElement('span');
         label.textContent = labelText;
-
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = !!root.config.get(settingName);
@@ -196,7 +173,6 @@
             root.config.set(settingName, checkbox.checked);
             if (typeof afterChange === 'function') afterChange();
         };
-
         row.appendChild(label);
         row.appendChild(checkbox);
         return row;
@@ -205,7 +181,6 @@
     function serviceSection(service) {
         const box = document.createElement('div');
         box.style.cssText = 'border:1px solid rgba(255,255,255,0.10);border-radius:6px;margin:6px 0;padding:7px;background:rgba(255,255,255,0.03);';
-
         const head = document.createElement('label');
         head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;color:#eee;font-weight:bold;';
         const label = document.createElement('span');
@@ -232,12 +207,6 @@
         auto.appendChild(autoLabel);
         auto.appendChild(autoCheck);
         box.appendChild(auto);
-
-        if (service.key === 'telegram') {
-            box.appendChild(selectRow('Placeholder', 'telegramPlaceholderSize', ['line', 'compact', 'medium', 'large']));
-            box.appendChild(checkRow('Thumbnail placeholder', 'telegramPlaceholderThumbs'));
-        }
-
         return box;
     }
 
@@ -256,32 +225,19 @@
         button.title = 'embokoun settings';
         button.setAttribute('data-embokoun-node', '1');
         button.style.cssText = [
-            'position:absolute;',
-            'top:6px;',
-            'right:6px;',
-            'z-index:5;',
-            'font-family:sans-serif;',
-            'font-size:10px;',
-            'line-height:1;',
-            'padding:4px 6px;',
-            'border-radius:999px;',
-            'border:1px solid rgba(255,255,255,0.25);',
-            'background:rgba(0,0,0,0.62);',
-            'color:#ddd;',
-            'cursor:pointer;',
-            'opacity:0.72;'
+            'position:absolute;', 'top:6px;', 'right:6px;', 'z-index:5;', 'font-family:sans-serif;',
+            'font-size:10px;', 'line-height:1;', 'padding:4px 6px;', 'border-radius:999px;',
+            'border:1px solid rgba(255,255,255,0.25);', 'background:rgba(0,0,0,0.62);',
+            'color:#ddd;', 'cursor:pointer;', 'opacity:0.72;'
         ].join('');
-
         button.addEventListener('click', ev => {
             ev.preventDefault();
             ev.stopPropagation();
-
             const old = document.querySelector('.embokoun-settings-menu');
             const wasOpen = !!old;
             closeSettingsMenus();
             if (!wasOpen) openSettingsMenu(button);
         });
-
         return button;
     }
 
@@ -299,65 +255,39 @@
         const panel = document.createElement('div');
         panel.setAttribute('data-embokoun-node', '1');
         panel.style.cssText = [
-            'position:relative;',
-            'width:100%;',
-            service.style || 'aspect-ratio:16/9;background:#1a1a1a;',
-            'background:#1a1a1a;',
-            'color:#ddd;',
-            'border-radius:4px;',
-            'display:flex;',
-            'align-items:center;',
-            'justify-content:center;',
-            'font-family:sans-serif;',
-            'font-size:13px;',
-            'text-align:center;',
-            'padding:12px;',
-            'box-sizing:border-box;',
-            'box-shadow:0 2px 8px rgba(0,0,0,0.2);'
+            'position:relative;', 'width:100%;', service.style || 'aspect-ratio:16/9;background:#1a1a1a;',
+            'background:#1a1a1a;', 'color:#ddd;', 'border-radius:4px;', 'display:flex;',
+            'align-items:center;', 'justify-content:center;', 'font-family:sans-serif;', 'font-size:13px;',
+            'text-align:center;', 'padding:12px;', 'box-sizing:border-box;', 'box-shadow:0 2px 8px rgba(0,0,0,0.2);'
         ].join('');
-
         panel.appendChild(makeSettingsButton());
-
         const box = document.createElement('div');
         box.style.cssText = 'display:flex;flex-direction:column;gap:8px;align-items:center;max-width:95%;';
-
         const status = document.createElement('div');
         status.textContent = `Loading ${service.label}...`;
-
         const hint = document.createElement('div');
         hint.style.cssText = 'font-size:11px;color:#aaa;';
         hint.textContent = `Safe limit: ${root.blob ? root.blob.formatBytes(root.config.blobMaxBytes()) : '?'}`;
-
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;gap:8px;justify-content:center;flex-wrap:wrap;';
-
         const cancel = smallButton('Cancel');
-
         const original = document.createElement('a');
         original.href = ctx.originalUrl;
         original.target = '_blank';
         original.rel = 'noopener noreferrer';
         original.textContent = 'Open original';
         original.style.cssText = 'font-size:12px;color:#aaa;align-self:center;';
-
         row.appendChild(cancel);
         row.appendChild(original);
         box.appendChild(status);
         box.appendChild(hint);
         box.appendChild(row);
         panel.appendChild(box);
-
         return {
             panel,
-            setStatus(text) {
-                status.textContent = text;
-            },
+            setStatus(text) { status.textContent = text; },
             setCancel(fn) {
-                cancel.onclick = ev => {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    fn();
-                };
+                cancel.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); fn(); };
             },
             disableCancel() {
                 cancel.disabled = true;
@@ -367,54 +297,48 @@
         };
     }
 
-    function applyPlaceholderPreview(placeholder, service, ctx) {
-        if (service && service.key === 'telegram' && !root.config.get('telegramPlaceholderThumbs')) return;
-        if (!service || typeof service.placeholderImage !== 'function') return;
-
-        let imageUrl = null;
-        try {
-            imageUrl = service.placeholderImage(ctx);
-        } catch (e) {
-            root.log.warn(service.key || 'ui', 'placeholder image failed', e);
-        }
-
-        if (!imageUrl) return;
-
+    function setPlaceholderImage(placeholder, imageUrl) {
+        if (!imageUrl || !placeholder || !placeholder.isConnected) return;
         placeholder.style.backgroundImage = [
-            'linear-gradient(rgba(0,0,0,0.18), rgba(0,0,0,0.38))',
+            'linear-gradient(rgba(0,0,0,0.18), rgba(0,0,0,0.42))',
             `url("${String(imageUrl).replace(/"/g, '%22')}")`
         ].join(', ');
     }
 
-    function placeholderStyleForService(service) {
-        if (service && service.key === 'telegram') {
-            const size = root.config.get('telegramPlaceholderSize') || 'line';
-            if (size === 'large') return 'height:360px;min-height:360px;background:#15202b;';
-            if (size === 'medium') return 'height:220px;min-height:180px;background:#15202b;';
-            if (size === 'compact') return 'height:136px;min-height:120px;background:#15202b;';
-            return 'height:38px;min-height:38px;background:#15202b;max-width:360px;';
+    function applyPlaceholderPreview(placeholder, service, ctx) {
+        if (!root.config.get('placeholderThumbs')) return;
+        if (!service || typeof service.placeholderImage !== 'function') return;
+
+        try {
+            const result = service.placeholderImage(ctx);
+            if (!result) return;
+            if (typeof result.then === 'function') {
+                result.then(url => setPlaceholderImage(placeholder, url)).catch(e => root.log.warn(service.key || 'ui', 'placeholder image failed', e));
+            } else {
+                setPlaceholderImage(placeholder, result);
+            }
+        } catch (e) {
+            root.log.warn(service.key || 'ui', 'placeholder image failed', e);
         }
+    }
+
+    function placeholderStyleForService(service) {
+        const mode = root.config.get('placeholderMode') || 'line';
+        if (mode === 'line') return 'height:38px;min-height:38px;background:#15202b;max-width:360px;';
+        if (service && service.key === 'instagram') return 'aspect-ratio:9/16;max-height:460px;background:#111;';
+        if (service && service.key === 'telegram') return 'height:220px;min-height:180px;background:#15202b;';
         return service.style || 'aspect-ratio:16/9;background:#111;';
     }
 
     function makePlaceholder(service, ctx) {
-        const isTelegramLine = service && service.key === 'telegram' && (root.config.get('telegramPlaceholderSize') || 'line') === 'line';
+        const isLine = (root.config.get('placeholderMode') || 'line') === 'line';
         const placeholder = document.createElement('div');
         placeholder.setAttribute('data-embokoun-node', '1');
         placeholder.style.cssText = [
-            'position:relative;',
-            'width:100%;',
-            placeholderStyleForService(service),
-            'border-radius:4px;',
-            'display:flex;',
-            'align-items:center;',
-            'justify-content:center;',
-            'cursor:pointer;',
-            'box-shadow:0 2px 8px rgba(0,0,0,0.2);',
-            'background-position:center;',
-            'background-size:cover;',
-            'transition:background 0.2s ease;',
-            isTelegramLine ? 'padding:0 44px 0 8px;box-sizing:border-box;' : ''
+            'position:relative;', 'width:100%;', placeholderStyleForService(service), 'border-radius:4px;',
+            'display:flex;', 'align-items:center;', 'justify-content:center;', 'cursor:pointer;',
+            'box-shadow:0 2px 8px rgba(0,0,0,0.2);', 'background-position:center;', 'background-size:cover;',
+            'transition:background 0.2s ease;', isLine ? 'padding:0 44px 0 8px;box-sizing:border-box;' : ''
         ].join('');
 
         applyPlaceholderPreview(placeholder, service, ctx);
@@ -422,19 +346,13 @@
 
         const button = document.createElement('div');
         button.textContent = `Load ${service.label}`;
-        button.style.cssText = isTelegramLine
+        button.style.cssText = isLine
             ? 'background:rgba(0,0,0,0.55);color:#fff;padding:4px 11px;border-radius:999px;font-family:sans-serif;font-size:12px;font-weight:bold;pointer-events:none;border:1px solid rgba(255,255,255,0.16);transition:all 0.2s;'
             : 'background:rgba(0,0,0,0.75);color:#fff;padding:10px 20px;border-radius:20px;font-family:sans-serif;font-size:13px;font-weight:bold;pointer-events:none;border:1px solid rgba(255,255,255,0.2);transition:all 0.2s;';
         placeholder.appendChild(button);
 
-        placeholder.addEventListener('mouseenter', () => {
-            button.style.background = 'rgba(180,0,0,0.9)';
-        });
-
-        placeholder.addEventListener('mouseleave', () => {
-            button.style.background = isTelegramLine ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.75)';
-        });
-
+        placeholder.addEventListener('mouseenter', () => { button.style.background = 'rgba(180,0,0,0.9)'; });
+        placeholder.addEventListener('mouseleave', () => { button.style.background = isLine ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.75)'; });
         placeholder.addEventListener('click', async () => {
             if (placeholder.dataset.loading === '1') return;
             closeSettingsMenus();
@@ -450,7 +368,6 @@
                 else button.textContent = 'Failed';
             }
         });
-
         return placeholder;
     }
 
@@ -467,17 +384,8 @@
     document.addEventListener('click', ev => {
         if (!ev.target.closest || !ev.target.closest('.embokoun-settings-menu')) closeSettingsMenus();
     }, true);
-
     window.addEventListener('scroll', closeSettingsMenus, true);
     window.addEventListener('resize', closeSettingsMenus, true);
 
-    root.ui = {
-        openSettingsMenu,
-        closeSettingsMenus,
-        makeSettingsButton,
-        makeSourceLink,
-        makeDownloadPanel,
-        makePlaceholder,
-        iframe
-    };
+    root.ui = { openSettingsMenu, closeSettingsMenus, makeSettingsButton, makeSourceLink, makeDownloadPanel, makePlaceholder, iframe };
 })();
