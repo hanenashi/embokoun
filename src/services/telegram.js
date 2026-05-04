@@ -12,9 +12,17 @@
     }
 
     function decodeHtml(str) {
-        const textarea = document.createElement('textarea');
-        textarea.innerHTML = String(str || '');
-        return textarea.value;
+        const t = document.createElement('textarea');
+        t.innerHTML = String(str || '');
+        return t.value;
+    }
+
+    function xmlEscape(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
     }
 
     function uniqPush(list, item, keyName) {
@@ -25,22 +33,18 @@
     }
 
     function getText(url, referer, timeout) {
-        timeout = timeout || 15000;
         return new Promise((resolve, reject) => {
             root.gm.request({
                 method: 'GET',
                 url,
-                timeout,
+                timeout: timeout || 15000,
                 headers: {
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                     'Referer': referer || 'https://t.me/'
                 },
-                onload: (res) => {
-                    if (res.status < 200 || res.status >= 300) {
-                        reject(new Error(`Telegram HTTP ${res.status}`));
-                        return;
-                    }
-                    resolve(res.responseText || '');
+                onload: res => {
+                    if (res.status < 200 || res.status >= 300) reject(new Error(`Telegram HTTP ${res.status}`));
+                    else resolve(res.responseText || '');
                 },
                 onerror: () => reject(new Error('Telegram HTML request failed')),
                 ontimeout: () => reject(new Error('Telegram HTML request timeout'))
@@ -59,12 +63,9 @@
                     'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
                     'Referer': referer || 'https://t.me/'
                 },
-                onload: (res) => {
-                    if (res.status < 200 || res.status >= 300 || !res.response || !res.response.size) {
-                        reject(new Error(`Telegram thumb HTTP ${res.status}`));
-                        return;
-                    }
-                    resolve(URL.createObjectURL(res.response));
+                onload: res => {
+                    if (res.status < 200 || res.status >= 300 || !res.response || !res.response.size) reject(new Error(`Telegram thumb HTTP ${res.status}`));
+                    else resolve(URL.createObjectURL(res.response));
                 },
                 onerror: () => reject(new Error('Telegram thumb request failed')),
                 ontimeout: () => reject(new Error('Telegram thumb request timeout'))
@@ -92,11 +93,9 @@
             const src = videoEl && videoEl.getAttribute('src');
             if (!src) return;
 
-            let thumb = '';
             const thumbEl = el.querySelector ? el.querySelector('.tgme_widget_message_video_thumb') : null;
-            if (thumbEl) thumb = extractBackgroundUrl((thumbEl.style && thumbEl.style.backgroundImage) || thumbEl.getAttribute('style'));
-
             const durationEl = el.querySelector ? el.querySelector('.message_video_duration') : null;
+            const thumb = thumbEl ? extractBackgroundUrl((thumbEl.style && thumbEl.style.backgroundImage) || thumbEl.getAttribute('style')) : '';
             const href = el.getAttribute && el.getAttribute('href');
 
             uniqPush(items, {
@@ -109,15 +108,11 @@
         });
 
         const meta = doc.querySelector('meta[property="og:video"], meta[property="og:video:secure_url"], meta[name="twitter:player:stream"]');
-        if (meta && meta.getAttribute('content')) {
-            uniqPush(items, { type: 'video', url: absUrl(meta.getAttribute('content'), baseUrl), thumbUrl: '', duration: '', href: '' });
-        }
+        if (meta && meta.getAttribute('content')) uniqPush(items, { type: 'video', url: absUrl(meta.getAttribute('content'), baseUrl), thumbUrl: '', duration: '', href: '' });
 
         const html = doc.documentElement ? doc.documentElement.innerHTML : '';
         const matches = html.match(/https?:\\?\/\\?\/[^"'<>\s]+?\.mp4[^"'<>\s]*/ig) || [];
-        matches.forEach(match => {
-            uniqPush(items, { type: 'video', url: absUrl(decodeHtml(match).replace(/\\\//g, '/'), baseUrl), thumbUrl: '', duration: '', href: '' });
-        });
+        matches.forEach(match => uniqPush(items, { type: 'video', url: absUrl(decodeHtml(match).replace(/\\\//g, '/'), baseUrl), thumbUrl: '', duration: '', href: '' }));
 
         return items;
     }
@@ -136,11 +131,58 @@
         });
 
         const meta = doc.querySelector('meta[property="og:image"], meta[name="twitter:image"]');
-        if (meta && meta.getAttribute('content')) {
-            uniqPush(items, { type: 'image', url: absUrl(meta.getAttribute('content'), baseUrl), href: '' });
-        }
+        if (meta && meta.getAttribute('content')) uniqPush(items, { type: 'image', url: absUrl(meta.getAttribute('content'), baseUrl), href: '' });
 
         return items;
+    }
+
+    function cleanPlainText(text) {
+        return String(text || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function extractPlainText(doc) {
+        const node = doc.querySelector('.tgme_widget_message_text');
+        return node ? cleanPlainText(node.textContent) : '';
+    }
+
+    function wrapForSvg(text, maxChars, maxLines) {
+        const words = cleanPlainText(text).split(' ').filter(Boolean);
+        const lines = [];
+        let line = '';
+
+        for (const word of words) {
+            const next = line ? `${line} ${word}` : word;
+            if (next.length > maxChars && line) {
+                lines.push(line);
+                line = word;
+                if (lines.length >= maxLines) break;
+            } else {
+                line = next;
+            }
+        }
+
+        if (line && lines.length < maxLines) lines.push(line);
+        if (lines.length === maxLines && words.join(' ').length > lines.join(' ').length) {
+            lines[lines.length - 1] = lines[lines.length - 1].replace(/[.,;:!?]*$/, '') + '...';
+        }
+        return lines;
+    }
+
+    function makeTextPreview(author, text) {
+        const title = cleanPlainText(author || 'Telegram').slice(0, 48);
+        const lines = wrapForSvg(text || 'Telegram text post', 58, 5);
+        const lineSvg = lines.map((line, i) => `<text x="100" y="${154 + i * 40}" font-size="28" fill="#25313b">${xmlEscape(line)}</text>`).join('');
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+<rect width="800" height="450" fill="#17212b"/>
+<rect x="54" y="45" width="692" height="360" rx="18" fill="#ffffff"/>
+<circle cx="100" cy="90" r="28" fill="#2481cc"/>
+<text x="100" y="100" text-anchor="middle" font-size="28" font-family="Arial, sans-serif" font-weight="700" fill="#fff">T</text>
+<text x="145" y="100" font-size="27" font-family="Arial, sans-serif" font-weight="700" fill="#168acd">${xmlEscape(title)}</text>
+<line x1="78" y1="122" x2="722" y2="122" stroke="#edf3f7" stroke-width="2"/>
+<g font-family="Arial, sans-serif">${lineSvg}</g>
+<text x="100" y="360" font-size="20" font-family="Arial, sans-serif" fill="#8197af">Telegram text post</text>
+</svg>`;
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
     }
 
     async function fetchThumb(embedUrl) {
@@ -155,20 +197,27 @@
                 const images = extractImageItems(doc, embedUrl);
                 const thumbUrl = (videos[0] && videos[0].thumbUrl) || (images[0] && images[0].url) || '';
 
-                if (!thumbUrl) {
-                    root.log.warn('telegram', 'no thumbnail found', embedUrl);
-                    return '';
+                if (thumbUrl) {
+                    try {
+                        root.log.debug('telegram', 'fetching thumbnail blob', thumbUrl);
+                        const blobUrl = await fetchImageBlob(thumbUrl, embedUrl);
+                        root.log.info('telegram', 'thumbnail blob ready', thumbUrl);
+                        return blobUrl;
+                    } catch (e) {
+                        root.log.warn('telegram', 'thumbnail blob failed; using direct url', thumbUrl, e);
+                        return thumbUrl;
+                    }
                 }
 
-                try {
-                    root.log.debug('telegram', 'fetching thumbnail blob', thumbUrl);
-                    const blobUrl = await fetchImageBlob(thumbUrl, embedUrl);
-                    root.log.info('telegram', 'thumbnail blob ready', thumbUrl);
-                    return blobUrl;
-                } catch (e) {
-                    root.log.warn('telegram', 'thumbnail blob failed; using direct url', thumbUrl, e);
-                    return thumbUrl;
+                const plainText = extractPlainText(doc);
+                const author = extractAuthor(doc);
+                if (plainText) {
+                    root.log.info('telegram', 'using generated text placeholder', embedUrl);
+                    return makeTextPreview(author, plainText);
                 }
+
+                root.log.warn('telegram', 'no thumbnail or text found', embedUrl);
+                return '';
             } catch (e) {
                 root.log.warn('telegram', 'thumbnail metadata failed', embedUrl, e);
                 return '';
