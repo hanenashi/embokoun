@@ -302,8 +302,8 @@
             root.log.warn('ui', 'placeholder thumb empty', serviceKey || '?');
             return;
         }
-        if (!placeholder || !placeholder.isConnected) {
-            root.log.warn('ui', 'placeholder thumb skipped disconnected', serviceKey || '?', imageUrl);
+        if (!placeholder) {
+            root.log.warn('ui', 'placeholder thumb skipped missing node', serviceKey || '?', imageUrl);
             return;
         }
 
