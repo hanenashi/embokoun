@@ -73,7 +73,7 @@
         heroImg.decoding = 'async';
         heroImg.style.cssText = [
             'display:block;',
-            'width:min(400px, 100%);',
+            'width:min(200px, 100%);',
             'height:auto;',
             'object-fit:contain;',
             'filter:drop-shadow(0 0 8px rgba(255,200,70,0.45)) drop-shadow(0 0 26px rgba(255,184,58,0.65));'
@@ -475,8 +475,6 @@
     document.addEventListener('click', ev => {
         if (!ev.target.closest || !ev.target.closest('.embokoun-settings-menu')) closeSettingsMenus();
     }, true);
-    window.addEventListener('scroll', closeSettingsMenus, true);
-    window.addEventListener('resize', closeSettingsMenus, true);
 
     root.ui = { openSettingsMenu, closeSettingsMenus, makeSettingsButton, makeSourceLink, makeDownloadPanel, makePlaceholder, iframe };
 })();
