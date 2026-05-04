@@ -28,6 +28,7 @@
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/services/telegram.js
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/services/instagram.js
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/services/facebook.js
+// @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/services/tiktok.js
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/services/index.js
 // @require      https://raw.githubusercontent.com/hanenashi/embokoun/main/src/core/dom.js
 // ==/UserScript==
