@@ -7,12 +7,12 @@
 
     const defaults = {
         logLevel: 'info',
-        blobMaxMb: 80,       // 0 means no limit
+        blobMaxMb: 80,
         blobMaxActive: 3,
         showSourceLinks: false,
+        placeholderMode: 'line',
+        placeholderThumbs: true,
         autoLoadServices: {},
-        telegramPlaceholderSize: 'line',
-        telegramPlaceholderThumbs: false,
         enabledServices: {}
     };
 
@@ -41,6 +41,8 @@
             if (!raw) return cloneDefaults();
             const parsed = JSON.parse(raw);
             const base = cloneDefaults();
+            const migratedMode = parsed.placeholderMode || (parsed.telegramPlaceholderSize === 'large' || parsed.telegramPlaceholderSize === 'medium' || parsed.telegramPlaceholderSize === 'compact' ? 'tombstone' : 'line');
+            const migratedThumbs = parsed.placeholderThumbs !== undefined ? parsed.placeholderThumbs : parsed.telegramPlaceholderThumbs;
 
             return {
                 ...base,
@@ -49,8 +51,8 @@
                 blobMaxMb: sanitizeNumberChoice(parsed.blobMaxMb, [0, 25, 50, 80, 120, 200], base.blobMaxMb),
                 blobMaxActive: sanitizeNumberChoice(parsed.blobMaxActive, [1, 2, 3, 5], base.blobMaxActive),
                 showSourceLinks: sanitizeBool(parsed.showSourceLinks, base.showSourceLinks),
-                telegramPlaceholderSize: sanitizeStringChoice(parsed.telegramPlaceholderSize, ['line', 'compact', 'medium', 'large'], base.telegramPlaceholderSize),
-                telegramPlaceholderThumbs: sanitizeBool(parsed.telegramPlaceholderThumbs, base.telegramPlaceholderThumbs),
+                placeholderMode: sanitizeStringChoice(migratedMode, ['line', 'tombstone'], base.placeholderMode),
+                placeholderThumbs: sanitizeBool(migratedThumbs, base.placeholderThumbs),
                 autoLoadServices: {
                     ...base.autoLoadServices,
                     ...(parsed.autoLoadServices || {})
@@ -66,57 +68,27 @@
     }
 
     function save() {
-        try {
-            localStorage.setItem(KEY, JSON.stringify(settings));
-        } catch (e) {
-            // ignore
-        }
+        try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ }
     }
 
     root.config = {
         key: KEY,
-
-        get(name) {
-            return settings[name];
-        },
-
-        set(name, value) {
-            settings[name] = value;
-            save();
-        },
-
+        get(name) { return settings[name]; },
+        set(name, value) { settings[name] = value; save(); },
         blobMaxBytes() {
             const mb = Number(settings.blobMaxMb);
             if (mb === 0) return Infinity;
             return mb * 1024 * 1024;
         },
-
-        isServiceEnabled(key) {
-            return settings.enabledServices[key] !== false;
-        },
-
-        setServiceEnabled(key, enabled) {
-            settings.enabledServices[key] = !!enabled;
-            save();
-        },
-
-        isServiceAutoLoad(key) {
-            return settings.autoLoadServices && settings.autoLoadServices[key] === true;
-        },
-
+        isServiceEnabled(key) { return settings.enabledServices[key] !== false; },
+        setServiceEnabled(key, enabled) { settings.enabledServices[key] = !!enabled; save(); },
+        isServiceAutoLoad(key) { return settings.autoLoadServices && settings.autoLoadServices[key] === true; },
         setServiceAutoLoad(key, enabled) {
             settings.autoLoadServices = settings.autoLoadServices || {};
             settings.autoLoadServices[key] = !!enabled;
             save();
         },
-
-        reset() {
-            settings = cloneDefaults();
-            save();
-        },
-
-        dump() {
-            return JSON.parse(JSON.stringify(settings));
-        }
+        reset() { settings = cloneDefaults(); save(); },
+        dump() { return JSON.parse(JSON.stringify(settings)); }
     };
 })();
