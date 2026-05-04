@@ -4,7 +4,7 @@
 
     const root = window.Embokoun = window.Embokoun || {};
 
-    root.version = root.version || '0.4.21-alpha';
+    root.version = root.version || '0.5.1';
     root.name = 'embokoun';
     root.githubUrl = 'https://github.com/hanenashi/embokoun';
     root.iconUrl = 'https://raw.githubusercontent.com/hanenashi/embokoun/main/embokoun.png';
