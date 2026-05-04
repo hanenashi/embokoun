@@ -20,9 +20,56 @@
         return !!(root.config && root.config.get && root.config.get('showSourceLinks'));
     }
 
+    function rememberDisplay(el) {
+        if (!el || el.dataset.embokounOrigDisplay !== undefined) return;
+        el.dataset.embokounOrigDisplay = el.style.display || '';
+    }
+
+    function setInlineLinkVisible(link, visible) {
+        if (!link) return;
+        rememberDisplay(link);
+        link.style.display = visible ? (link.dataset.embokounOrigDisplay || '') : 'none';
+    }
+
+    function makeTrackedSourceLink(url, serviceLabel) {
+        const source = root.ui.makeSourceLink(url, serviceLabel);
+        source.setAttribute('data-embokoun-source-link', '1');
+        source.style.display = shouldShowSourceLink() ? '' : 'none';
+        return source;
+    }
+
+    function ensureWrapperSourceLink(wrapper) {
+        if (!wrapper || !wrapper.dataset) return;
+        if (wrapper.querySelector('[data-embokoun-source-link="1"]')) return;
+        const url = wrapper.dataset.embokounSourceUrl;
+        const label = wrapper.dataset.embokounServiceLabel || 'original';
+        if (!url) return;
+        wrapper.appendChild(makeTrackedSourceLink(url, label));
+    }
+
+    function syncSourceVisibility() {
+        const show = shouldShowSourceLink();
+
+        document.querySelectorAll('a.embokoun-embedded[data-embokoun-done="1"]').forEach(link => {
+            setInlineLinkVisible(link, show);
+        });
+
+        document.querySelectorAll('[data-embokoun-wrapper="1"]').forEach(wrapper => {
+            ensureWrapperSourceLink(wrapper);
+            wrapper.querySelectorAll('[data-embokoun-source-link="1"]').forEach(source => {
+                source.style.display = show ? '' : 'none';
+            });
+        });
+
+        root.log.debug('dom', 'source visibility synced', `show=${show}`);
+    }
+
     function processLink(link) {
         if (!link || link.nodeType !== 1) return;
-        if (link.dataset.embokounDone === '1') return;
+        if (link.dataset.embokounDone === '1') {
+            syncSourceVisibility();
+            return;
+        }
         if (isInsideEmbokounNode(link)) return;
 
         const contentRoot = link.closest('div.content, .item .content');
@@ -39,10 +86,15 @@
             if (!match) continue;
 
             link.dataset.embokounDone = '1';
+            link.dataset.embokounService = service.key;
             link.classList.add('embokoun-embedded');
+            setInlineLinkVisible(link, shouldShowSourceLink());
 
             const wrapper = document.createElement('div');
             wrapper.setAttribute('data-embokoun-node', '1');
+            wrapper.setAttribute('data-embokoun-wrapper', '1');
+            wrapper.dataset.embokounSourceUrl = url;
+            wrapper.dataset.embokounServiceLabel = service.label;
             wrapper.style.cssText = `margin:12px 0;max-width:${service.maxWidth || MAX_WIDTH};display:flex;flex-direction:column;`;
 
             const ctx = { match, originalUrl: url, link, service };
@@ -58,16 +110,10 @@
                 wrapper.appendChild(root.ui.makePlaceholder(service, ctx));
             }
 
-            if (shouldShowSourceLink()) {
-                wrapper.appendChild(root.ui.makeSourceLink(url, service.label));
-            }
+            wrapper.appendChild(makeTrackedSourceLink(url, service.label));
 
             if (link.parentNode) {
                 link.parentNode.insertBefore(wrapper, link.nextSibling);
-            }
-
-            if (link.querySelector('img')) {
-                link.style.display = 'none';
             }
 
             root.log.info('dom', shouldAutoLoad(service) ? 'auto-loading' : 'embedded placeholder', service.key, url);
@@ -76,6 +122,8 @@
     }
 
     function scan(rootNode) {
+        syncSourceVisibility();
+
         if (!rootNode || rootNode.nodeType !== 1) return;
         if (isInsideEmbokounNode(rootNode)) return;
 
@@ -88,6 +136,7 @@
             : [];
 
         links.forEach(processLink);
+        syncSourceVisibility();
     }
 
     let scanTimer = null;
@@ -125,6 +174,7 @@
         start,
         scan,
         scheduleScan,
+        syncSourceVisibility,
         isInsideEmbokounNode
     };
 })();
