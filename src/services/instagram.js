@@ -3,6 +3,7 @@
     'use strict';
 
     const root = window.Embokoun;
+    const thumbCache = new Map();
 
     function absUrl(url, base) {
         if (!url) return '';
@@ -121,35 +122,31 @@
         return desc ? desc.replace(/\s+/g, ' ').trim() : '';
     }
 
+    async function fetchThumb(publicUrl) {
+        if (thumbCache.has(publicUrl)) return thumbCache.get(publicUrl);
+        const promise = getText(publicUrl, 12000).then(html => extractImageUrl(html, publicUrl)).catch(() => '');
+        thumbCache.set(publicUrl, promise);
+        return promise;
+    }
+
     function makeCard(data) {
         const card = document.createElement('div');
         card.setAttribute('data-embokoun-node', '1');
         card.style.cssText = [
-            'width:100%;',
-            'max-width:430px;',
-            'box-sizing:border-box;',
-            'border:1px solid #dbdbdb;',
-            'border-radius:8px;',
-            'background:#fff;',
-            'color:#262626;',
+            'width:100%;', 'max-width:430px;', 'box-sizing:border-box;', 'border:1px solid #dbdbdb;',
+            'border-radius:8px;', 'background:#fff;', 'color:#262626;',
             'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;',
-            'font-size:14px;',
-            'line-height:1.35;',
-            'overflow:hidden;',
-            'box-shadow:0 2px 8px rgba(0,0,0,0.14);'
+            'font-size:14px;', 'line-height:1.35;', 'overflow:hidden;', 'box-shadow:0 2px 8px rgba(0,0,0,0.14);'
         ].join('');
 
         const header = document.createElement('div');
         header.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #efefef;';
-
         const logo = document.createElement('div');
         logo.textContent = 'IG';
         logo.style.cssText = 'width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#f58529,#dd2a7b,#8134af,#515bd4);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;flex:0 0 auto;';
-
         const title = document.createElement('div');
         title.textContent = 'Instagram';
         title.style.cssText = 'font-weight:bold;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-
         header.appendChild(logo);
         header.appendChild(title);
         card.appendChild(header);
@@ -160,14 +157,12 @@
             imgWrap.target = '_blank';
             imgWrap.rel = 'noopener noreferrer';
             imgWrap.style.cssText = 'display:block;position:relative;background:#000;';
-
             const img = document.createElement('img');
             img.src = data.imageUrl;
             img.loading = 'lazy';
             img.decoding = 'async';
             img.style.cssText = 'display:block;width:100%;height:auto;max-height:560px;object-fit:contain;background:#000;';
             imgWrap.appendChild(img);
-
             const play = document.createElement('div');
             play.textContent = '▶';
             play.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:48px;height:48px;border-radius:50%;background:rgba(0,0,0,0.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;text-indent:3px;';
@@ -177,21 +172,18 @@
 
         const body = document.createElement('div');
         body.style.cssText = 'padding:10px 12px;display:flex;flex-direction:column;gap:6px;';
-
         if (data.title) {
             const t = document.createElement('div');
             t.textContent = data.title;
             t.style.cssText = 'font-weight:600;overflow-wrap:anywhere;';
             body.appendChild(t);
         }
-
         if (data.description && data.description !== data.title) {
             const d = document.createElement('div');
             d.textContent = data.description;
             d.style.cssText = 'color:#555;overflow-wrap:anywhere;';
             body.appendChild(d);
         }
-
         const link = document.createElement('a');
         link.href = data.originalUrl;
         link.target = '_blank';
@@ -199,7 +191,6 @@
         link.textContent = 'Open on Instagram';
         link.style.cssText = 'color:#00376b;text-decoration:none;font-weight:bold;align-self:flex-start;';
         body.appendChild(link);
-
         card.appendChild(body);
         return card;
     }
@@ -207,9 +198,7 @@
     function makeIframe(shortcode, kind) {
         return root.render.fallbackFrame({
             src: `https://www.instagram.com/${encodeURIComponent(kind)}/${encodeURIComponent(shortcode)}/embed/`,
-            mode: 'normal',
-            aspect: '4/5',
-            reason: 'instagram-iframe'
+            mode: 'normal', aspect: '4/5', reason: 'instagram-iframe'
         });
     }
 
@@ -223,6 +212,12 @@
             return url.match(/instagram\.com\/(reel|p|tv)\/([a-zA-Z0-9_-]+)/i);
         },
 
+        placeholderImage(ctx) {
+            const kind = ctx.match[1].toLowerCase();
+            const shortcode = ctx.match[2];
+            return fetchThumb(`https://www.instagram.com/${kind}/${encodeURIComponent(shortcode)}/`);
+        },
+
         async resolve(ctx) {
             const kind = ctx.match[1].toLowerCase();
             const shortcode = ctx.match[2];
@@ -234,13 +229,7 @@
 
             if (videoUrl) {
                 root.log.info('instagram', 'resolved video', videoUrl);
-                return {
-                    kind: 'video-url',
-                    url: videoUrl,
-                    referer: 'https://www.instagram.com/',
-                    aspect: '9/16',
-                    reason: 'instagram-video'
-                };
+                return { kind: 'video-url', url: videoUrl, referer: 'https://www.instagram.com/', aspect: '9/16', reason: 'instagram-video' };
             }
 
             const imageUrl = extractImageUrl(html, publicUrl);
@@ -249,26 +238,11 @@
 
             if (imageUrl || title || description) {
                 root.log.warn('instagram', 'no video found; rendering card', shortcode);
-                return {
-                    kind: 'native-node',
-                    node: makeCard({
-                        imageUrl,
-                        title,
-                        description,
-                        originalUrl: publicUrl
-                    }),
-                    reason: 'instagram-card'
-                };
+                return { kind: 'native-node', node: makeCard({ imageUrl, title, description, originalUrl: publicUrl }), reason: 'instagram-card' };
             }
 
             root.log.warn('instagram', 'no useful data found; iframe fallback', shortcode);
-            return {
-                kind: 'iframe',
-                url: `https://www.instagram.com/${kind}/${encodeURIComponent(shortcode)}/embed/`,
-                widthMode: 'normal',
-                aspect: '4/5',
-                reason: 'instagram-iframe'
-            };
+            return { kind: 'iframe', url: `https://www.instagram.com/${kind}/${encodeURIComponent(shortcode)}/embed/`, widthMode: 'normal', aspect: '4/5', reason: 'instagram-iframe' };
         },
 
         fallback(ctx) {
