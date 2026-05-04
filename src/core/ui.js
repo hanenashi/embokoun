@@ -42,7 +42,7 @@
         menu.style.cssText = [
             'position:fixed;', 'z-index:2147483647;', 'width:min(360px, calc(100vw - 20px));',
             'max-height:calc(100vh - 20px);', 'overflow:auto;', 'background:rgba(18,18,18,0.97);',
-            'color:#eee;', 'border:1px solid rgba(255,255,255,0.22);', 'border-radius:8px;',
+            'color:#eee;', 'border:1px solid rgba(255,255,255,0.22);', 'border-radius:10px;',
             'box-shadow:0 4px 18px rgba(0,0,0,0.45);', 'font-family:sans-serif;', 'font-size:12px;',
             'padding:10px;', 'box-sizing:border-box;', 'text-align:left;', 'line-height:1.3;'
         ].join('');
@@ -51,26 +51,35 @@
         menu.addEventListener('click', ev => ev.stopPropagation());
 
         const title = document.createElement('div');
-        title.textContent = `embokoun ${root.version}`;
-        title.style.cssText = 'font-weight:bold;margin-bottom:8px;';
+        title.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;';
+        const name = document.createElement('strong');
+        name.textContent = `embokoun ${root.version}`;
+        const miniClose = smallButton('×');
+        miniClose.title = 'Close';
+        miniClose.style.minWidth = '26px';
+        miniClose.onclick = closeSettingsMenus;
+        title.appendChild(name);
+        title.appendChild(miniClose);
         menu.appendChild(title);
 
-        menu.appendChild(sectionTitle('Core'));
-        menu.appendChild(selectRow('Log level', 'logLevel', ['off', 'error', 'warn', 'info', 'debug', 'trace']));
-        menu.appendChild(checkRow('Show source links', 'showSourceLinks', () => root.dom && root.dom.scan(document.body)));
+        menu.appendChild(settingsGroup('General', [
+            selectRow('Log level', 'logLevel', ['off', 'error', 'warn', 'info', 'debug', 'trace']),
+            checkRow('Show original links', 'showSourceLinks', () => root.dom && root.dom.scan(document.body))
+        ]));
 
-        menu.appendChild(sectionTitle('Placeholders'));
-        menu.appendChild(selectRow('Mode', 'placeholderMode', ['line', 'tombstone']));
-        menu.appendChild(checkRow('Fetch thumbnails', 'placeholderThumbs'));
+        menu.appendChild(settingsGroup('Placeholders', [
+            selectRow('Mode', 'placeholderMode', ['line', 'tombstone']),
+            checkRow('Fetch thumbnails', 'placeholderThumbs')
+        ]));
 
-        menu.appendChild(sectionTitle('Blob loading'));
-        menu.appendChild(numberSelectRow('Blob size limit', 'blobMaxMb', [0, 25, 50, 80, 120, 200], value => value === 0 ? 'No limit' : `${value} MB`));
-        menu.appendChild(numberSelectRow('Loaded blob videos', 'blobMaxActive', [1, 2, 3, 5], value => String(value), () => {
-            if (root.blob && typeof root.blob.cleanup === 'function') root.blob.cleanup();
-        }));
+        menu.appendChild(settingsGroup('Loading', [
+            numberSelectRow('Blob size limit', 'blobMaxMb', [0, 25, 50, 80, 120, 200], value => value === 0 ? 'No limit' : `${value} MB`),
+            numberSelectRow('Loaded blob videos', 'blobMaxActive', [1, 2, 3, 5], value => String(value), () => {
+                if (root.blob && typeof root.blob.cleanup === 'function') root.blob.cleanup();
+            })
+        ]));
 
-        menu.appendChild(sectionTitle('Services'));
-        root.services.list.forEach(service => menu.appendChild(serviceSection(service)));
+        menu.appendChild(servicesGroup());
 
         const buttons = document.createElement('div');
         buttons.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;';
@@ -100,7 +109,7 @@
         menu.appendChild(buttons);
 
         const note = document.createElement('div');
-        note.textContent = 'Settings are saved in this browser only. Refresh page to redraw existing placeholders.';
+        note.textContent = 'Saved in this browser. Refresh to redraw existing placeholders.';
         note.style.cssText = 'font-size:10px;color:#888;margin-top:8px;';
         menu.appendChild(note);
 
@@ -108,20 +117,84 @@
         positionSettingsMenu(menu, anchor);
     }
 
-    function sectionTitle(text) {
+    function settingsGroup(titleText, rows) {
+        const group = document.createElement('div');
+        group.style.cssText = 'border:1px solid rgba(255,255,255,0.11);border-radius:8px;margin:8px 0;padding:8px;background:rgba(255,255,255,0.035);';
         const title = document.createElement('div');
-        title.textContent = text;
-        title.style.cssText = 'font-weight:bold;margin:10px 0 5px;color:#fff;border-top:1px solid rgba(255,255,255,0.12);padding-top:8px;';
-        return title;
+        title.textContent = titleText;
+        title.style.cssText = 'font-weight:bold;color:#fff;margin:0 0 6px;';
+        group.appendChild(title);
+        rows.forEach(row => group.appendChild(row));
+        return group;
+    }
+
+    function servicesGroup() {
+        const group = document.createElement('div');
+        group.style.cssText = 'border:1px solid rgba(255,255,255,0.11);border-radius:8px;margin:8px 0;padding:8px;background:rgba(255,255,255,0.035);';
+
+        const title = document.createElement('div');
+        title.textContent = 'Services';
+        title.style.cssText = 'font-weight:bold;color:#fff;margin:0 0 6px;';
+        group.appendChild(title);
+
+        const head = document.createElement('div');
+        head.style.cssText = 'display:grid;grid-template-columns:1fr 54px 66px;gap:6px;align-items:center;color:#888;font-size:10px;text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px;';
+        head.innerHTML = '<span>Service</span><span style="text-align:center;">On</span><span style="text-align:center;">Auto</span>';
+        group.appendChild(head);
+
+        root.services.list.forEach(service => group.appendChild(serviceRow(service)));
+        return group;
+    }
+
+    function serviceRow(service) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:grid;grid-template-columns:1fr 54px 66px;gap:6px;align-items:center;padding:5px 0;border-top:1px solid rgba(255,255,255,0.07);';
+
+        const label = document.createElement('div');
+        label.textContent = service.label;
+        label.title = service.key;
+        label.style.cssText = 'color:#ddd;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+
+        const enabledWrap = centerCell();
+        const enabled = compactCheckbox(root.config.isServiceEnabled(service.key));
+        enabled.onchange = () => {
+            root.config.setServiceEnabled(service.key, enabled.checked);
+            if (enabled.checked && root.dom) root.dom.scan(document.body);
+        };
+        enabledWrap.appendChild(enabled);
+
+        const autoWrap = centerCell();
+        const auto = compactCheckbox(root.config.isServiceAutoLoad(service.key));
+        auto.onchange = () => root.config.setServiceAutoLoad(service.key, auto.checked);
+        autoWrap.appendChild(auto);
+
+        row.appendChild(label);
+        row.appendChild(enabledWrap);
+        row.appendChild(autoWrap);
+        return row;
+    }
+
+    function centerCell() {
+        const cell = document.createElement('div');
+        cell.style.cssText = 'display:flex;align-items:center;justify-content:center;';
+        return cell;
+    }
+
+    function compactCheckbox(checked) {
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = !!checked;
+        checkbox.style.cssText = 'width:18px;height:18px;margin:0;';
+        return checkbox;
     }
 
     function selectRow(labelText, settingName, values, afterChange) {
         const row = document.createElement('label');
-        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0;color:#ccc;';
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0;color:#ccc;';
         const label = document.createElement('span');
         label.textContent = labelText;
         const select = document.createElement('select');
-        select.style.cssText = 'background:#222;color:#eee;border:1px solid #666;border-radius:4px;padding:2px 4px;max-width:150px;';
+        select.style.cssText = 'background:#222;color:#eee;border:1px solid #666;border-radius:5px;padding:3px 5px;max-width:150px;';
         values.forEach(value => {
             const option = document.createElement('option');
             option.value = value;
@@ -140,11 +213,11 @@
 
     function numberSelectRow(labelText, settingName, values, labelMaker, afterChange) {
         const row = document.createElement('label');
-        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0;color:#ccc;';
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0;color:#ccc;';
         const label = document.createElement('span');
         label.textContent = labelText;
         const select = document.createElement('select');
-        select.style.cssText = 'background:#222;color:#eee;border:1px solid #666;border-radius:4px;padding:2px 4px;max-width:150px;';
+        select.style.cssText = 'background:#222;color:#eee;border:1px solid #666;border-radius:5px;padding:3px 5px;max-width:150px;';
         values.forEach(value => {
             const option = document.createElement('option');
             option.value = String(value);
@@ -163,12 +236,10 @@
 
     function checkRow(labelText, settingName, afterChange) {
         const row = document.createElement('label');
-        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0;color:#ccc;';
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0;color:#ccc;';
         const label = document.createElement('span');
         label.textContent = labelText;
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = !!root.config.get(settingName);
+        const checkbox = compactCheckbox(!!root.config.get(settingName));
         checkbox.onchange = () => {
             root.config.set(settingName, checkbox.checked);
             if (typeof afterChange === 'function') afterChange();
@@ -178,43 +249,11 @@
         return row;
     }
 
-    function serviceSection(service) {
-        const box = document.createElement('div');
-        box.style.cssText = 'border:1px solid rgba(255,255,255,0.10);border-radius:6px;margin:6px 0;padding:7px;background:rgba(255,255,255,0.03);';
-        const head = document.createElement('label');
-        head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;color:#eee;font-weight:bold;';
-        const label = document.createElement('span');
-        label.textContent = service.label;
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = root.config.isServiceEnabled(service.key);
-        checkbox.onchange = () => {
-            root.config.setServiceEnabled(service.key, checkbox.checked);
-            if (checkbox.checked && root.dom) root.dom.scan(document.body);
-        };
-        head.appendChild(label);
-        head.appendChild(checkbox);
-        box.appendChild(head);
-
-        const auto = document.createElement('label');
-        auto.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0 0;color:#bbb;';
-        const autoLabel = document.createElement('span');
-        autoLabel.textContent = 'Auto-load';
-        const autoCheck = document.createElement('input');
-        autoCheck.type = 'checkbox';
-        autoCheck.checked = root.config.isServiceAutoLoad(service.key);
-        autoCheck.onchange = () => root.config.setServiceAutoLoad(service.key, autoCheck.checked);
-        auto.appendChild(autoLabel);
-        auto.appendChild(autoCheck);
-        box.appendChild(auto);
-        return box;
-    }
-
     function smallButton(text) {
         const button = document.createElement('button');
         button.type = 'button';
         button.textContent = text;
-        button.style.cssText = 'font-size:11px;padding:3px 7px;border-radius:4px;border:1px solid #666;background:#2b2b2b;color:#ddd;cursor:pointer;';
+        button.style.cssText = 'font-size:11px;padding:3px 7px;border-radius:5px;border:1px solid #666;background:#2b2b2b;color:#ddd;cursor:pointer;';
         return button;
     }
 
