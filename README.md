@@ -7,13 +7,16 @@ Goal: make Okoun media embedding maintainable, testable, and expandable without 
 ## Install
 
 Install the loader userscript:
+
 [https://raw.githubusercontent.com/hanenashi/embokoun/main/embokoun.user.js](https://raw.githubusercontent.com/hanenashi/embokoun/main/embokoun.user.js)
+
+The loader pulls the individual modules from `src/` through userscript `@require` lines.
 
 ## Current status
 
-`0.4.4-alpha`
+`0.4.20-alpha`
 
-This version is a modular userscript with a universal `resolve -> render` layer and first useful Telegram support.
+Embokoun now has a modular service registry, universal `resolve -> render` layer, blob loading, thumbnail placeholders, per-service toggles, and a consolidated settings panel.
 
 Current features:
 
@@ -23,11 +26,15 @@ Current features:
 - Greasemonkey 4+ support through `GM.xmlHttpRequest`
 - userscript menu settings via `GM_registerMenuCommand` / `GM.registerMenuCommand`
 - localStorage-backed settings
+- consolidated settings panel with grouped sections
+- compact service table: service / enabled / auto-load
 - toggleable logging levels
+- global placeholder mode: `line` or `tombstone`
+- optional thumbnail fetching for placeholders
+- optional original-link visibility
 - configurable blob size limit and active blob cleanup limit
 - cancelable blob download panel with progress text
-- small settings button injected into media placeholders
-- compact / medium / large Telegram placeholder setting
+- small settings button injected into media placeholders and loaded media/cards
 - modular service registry
 - universal `resolve -> render` core with backward-compatible old `embed()` support
 - universal iframe helper
@@ -36,12 +43,114 @@ Current features:
 Current services:
 
 - Direct MP4
-- YouTube, with thumbnail placeholders
+- YouTube, with blob-fetched thumbnail placeholders
 - Vimeo
-- Twitter/X, using metadata lookup, blob-loaded MP4 path, progress/cancel, and iframe fallback
-- Telegram, with native cards for text/photo/mixed posts, blob-loaded playable video tiles, and iframe fallback
+- Twitter/X, using vxtwitter metadata, blob-fetched thumbnails, blob-loaded MP4 path, progress/cancel, and iframe fallback
+- Telegram, with blob-fetched thumbnails, generated text-only previews, native cards for text/photo/mixed posts, blob-loaded playable video tiles, and iframe fallback
+- Instagram, with thumbnail previews, direct video extraction where possible, and graceful unavailable cards for login/age/account-gated posts
+- Facebook, with metadata thumbnails, direct MP4 extraction where possible, and fallback cards for private/login-walled posts
 
-This is still not full Vidokoun parity. But Telegram is no longer just a video goblin with a regex club.
+This is still alpha, but it is no longer just a video goblin with a regex club.
+
+## Settings
+
+Open from the userscript manager menu:
+
+```text
+Embokoun settings
+```
+
+Also available from the small `settings` pill injected into media placeholders/cards.
+
+Current settings panel layout:
+
+```text
+General
+  Log level
+  Show original links
+
+Placeholders
+  Mode
+  Fetch thumbnails
+
+Loading
+  Blob size limit
+  Loaded blob videos
+
+Services
+  Service | On | Auto
+```
+
+Setting details:
+
+- log level: `off / error / warn / info / debug / trace`
+- show original links:
+  - ON: keep the original inline Okoun URL and show the extra `[ Open original ... link ]`
+  - OFF: hide the original inline Okoun URL and hide the extra source link
+- placeholder mode:
+  - `line`: compact one-line load placeholder
+  - `tombstone`: larger thumbnail/card-style placeholder
+- fetch thumbnails: enable/disable placeholder previews
+- blob size limit: `No limit / 25 / 50 / 80 / 120 / 200 MB`
+- loaded blob videos: `1 / 2 / 3 / 5`
+- per-service enable/disable
+- per-service auto-load
+- reset settings
+
+Settings are stored in:
+
+```javascript
+localStorage['embokoun.settings.v1']
+```
+
+## Placeholder thumbnails
+
+Embokoun tries to show useful placeholder previews before loading media.
+
+For hostile/hotlink-sensitive hosts, thumbnails are fetched through userscript requests and converted to local blob URLs:
+
+```text
+GM_xmlhttpRequest / GM.xmlHttpRequest
+↓
+thumbnail Blob
+↓
+URL.createObjectURL(...)
+↓
+placeholder <img src="blob:...">
+```
+
+Current thumbnail behavior:
+
+- YouTube: fetches `i.ytimg.com` / `img.youtube.com` candidates as blobs
+- Twitter/X: uses vxtwitter metadata, then blob-fetches the thumbnail/poster image
+- Telegram: parses the public embed page, then blob-fetches the first video thumbnail or image
+- Telegram text-only posts: generates a local SVG preview card from author + first text lines
+- Instagram: uses page metadata where available, otherwise generates an unavailable preview card
+- Facebook: uses page metadata where available, otherwise generates an unavailable preview card
+
+## Blob loading
+
+Blob-loaded videos use userscript HTTP requests instead of normal page media loading:
+
+```text
+GM_xmlhttpRequest / GM.xmlHttpRequest
+↓
+Blob
+↓
+URL.createObjectURL(...)
+↓
+local <video controls>
+```
+
+This is useful for hosts that fail when loaded directly by the page because of CSP, hotlinking, referrer checks, or other tiny bureaucratic goblins.
+
+Blob UI provides:
+
+- live progress text
+- size limit enforcement
+- Cancel button
+- active blob cleanup
+- page unload cleanup
 
 ## Telegram behavior
 
@@ -66,7 +175,8 @@ Embokoun then tries this order:
 3. pure single video post -> blob video
 4. mixed video/photo/text post -> native Telegram card
 5. photo/text post -> native Telegram card
-6. weird/unsupported post -> iframe fallback
+6. text-only post -> native Telegram card, with generated placeholder preview
+7. weird/unsupported post -> iframe fallback
 ```
 
 Mixed Telegram posts keep the full card readable:
@@ -80,6 +190,38 @@ Telegram card
 ```
 
 The video tile does **not** open the Telegram CDN directly. It uses the same blob download path as Twitter/X, so it avoids browser page CSP/media-src trouble where possible.
+
+## Instagram behavior
+
+Instagram support is best-effort.
+
+Embokoun tries to:
+
+```text
+1. fetch public post/reel page
+2. extract direct video URL if present
+3. extract image/metadata if direct video is not present
+4. render video or card
+5. show a clean unavailable card when Instagram blocks the content
+```
+
+If Instagram says the post requires login, app access, account permission, or age/account limits, Embokoun does not try to defeat that. It shows a clean fallback card with `Open on Instagram`.
+
+## Facebook behavior
+
+Facebook support is also best-effort.
+
+Embokoun tries to:
+
+```text
+1. match facebook.com / fb.watch links
+2. fetch public page metadata
+3. extract og:image / og:video / mp4-ish URLs
+4. blob-load direct video if possible
+5. otherwise show a clean Facebook card with Open on Facebook
+```
+
+Private, login-walled, or blocked Facebook posts may only render as fallback cards. Facebook is a swamp. Bring boots.
 
 ## Media strategy notes
 
@@ -109,6 +251,7 @@ src/core/log.js
 src/core/config.js
 src/core/ui.js
 src/core/blob.js
+src/core/shell.js
 src/core/render.js
 src/core/dom.js
 src/services/direct-mp4.js
@@ -116,6 +259,8 @@ src/services/youtube.js
 src/services/vimeo.js
 src/services/twitter.js
 src/services/telegram.js
+src/services/instagram.js
+src/services/facebook.js
 src/services/index.js
 docs/media-strategy-notes.md
 ```
@@ -153,11 +298,13 @@ New preferred service shape:
   key: 'direct-mp4',
   label: 'Direct MP4',
   match(url) {},
+  placeholderImage(ctx) {
+    return 'https://example.com/thumb.jpg';
+  },
   async resolve(ctx) {
     return {
       kind: 'video-url',
       url: 'https://example.com/video.mp4',
-      blob: false,
       aspect: '16/9',
       reason: 'direct-mp4'
     };
@@ -178,30 +325,6 @@ none
 
 No ES modules, no dynamic `eval`, no clever loader magic. Userscript managers are weird enough already.
 
-## Blob loading
-
-Blob-loaded videos use userscript HTTP requests instead of normal page media loading:
-
-```text
-GM_xmlhttpRequest / GM.xmlHttpRequest
-↓
-Blob
-↓
-URL.createObjectURL(...)
-↓
-local <video controls>
-```
-
-This is useful for hosts that fail when loaded directly by the page because of CSP, hotlinking, or other tiny bureaucratic goblins.
-
-Blob UI currently provides:
-
-- live progress text
-- size limit enforcement
-- Cancel button
-- active blob cleanup
-- page unload cleanup
-
 ## Logging
 
 Settings menu exposes logging level:
@@ -214,36 +337,14 @@ Logs are prefixed like:
 
 ```text
 [embokoun:dom]
+[embokoun:ui]
+[embokoun:blob]
 [embokoun:youtube]
 [embokoun:direct-mp4]
 [embokoun:twitter]
 [embokoun:telegram]
-[embokoun:blob]
-```
-
-## Settings
-
-Open from the userscript manager menu:
-
-```text
-Embokoun settings
-```
-
-Also available from the small `settings` pill injected into media placeholders.
-
-Current settings:
-
-- log level: off / error / warn / info / debug / trace
-- blob size limit: No limit / 25 / 50 / 80 / 120 / 200 MB
-- loaded blob videos: 1 / 2 / 3 / 5
-- Telegram placeholder size: compact / medium / large
-- enable/disable each registered service
-- reset settings
-
-Settings are stored in:
-
-```javascript
-localStorage['embokoun.settings.v1']
+[embokoun:instagram]
+[embokoun:facebook]
 ```
 
 ## Greasemonkey notes
@@ -263,17 +364,11 @@ Remote modules are loaded through `@require`, which is safer and more compatible
 
 Near-term polish:
 
-- better Telegram card styling and compact modes
-- optional auto-load rules per service
+- better per-service sizing controls
 - GIF click-to-load strategy
-- better diagnostics panel
-- wider/taller iframe/card helper exposed through settings
-
-Next service modules to port from Vidokoun:
-
-- Instagram leech core
-- Facebook leech core
-- other cursed hosts as encountered in the wild
+- diagnostics panel / copied debug bundle
+- more compact card modes
+- more cursed hosts as encountered in the wild
 
 ## Design rule
 
