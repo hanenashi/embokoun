@@ -42,7 +42,7 @@
             const parsed = JSON.parse(raw);
             const base = cloneDefaults();
             const migratedMode = parsed.placeholderMode || (parsed.telegramPlaceholderSize === 'large' || parsed.telegramPlaceholderSize === 'medium' || parsed.telegramPlaceholderSize === 'compact' ? 'tombstone' : 'line');
-            const migratedThumbs = parsed.placeholderThumbs !== undefined ? parsed.placeholderThumbs : parsed.telegramPlaceholderThumbs;
+            const migratedThumbs = parsed.placeholderThumbs !== undefined ? parsed.placeholderThumbs : base.placeholderThumbs;
 
             return {
                 ...base,
