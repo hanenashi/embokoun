@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="embokoun.png" alt="embokoun obsidian media shrine icon" width="220">
+</p>
+
 # embokoun
 
 Embokoun is the modular successor to `vidokoun`.
@@ -14,14 +18,16 @@ The loader pulls the individual modules from `src/` through userscript `@require
 
 ## Current status
 
-`0.4.20-alpha`
+`0.4.21-alpha`
 
-Embokoun now has a modular service registry, universal `resolve -> render` layer, blob loading, thumbnail placeholders, per-service toggles, and a consolidated settings panel.
+Embokoun now has a modular service registry, universal `resolve -> render` layer, blob loading, thumbnail placeholders, per-service toggles, a consolidated settings panel, and a tiny obsidian media shrine icon because apparently branding happened.
 
 Current features:
 
 - thin `embokoun.user.js` loader
 - classic `@require`-loaded modules for userscript-manager compatibility
+- userscript icon wired through `icon.ico`
+- settings panel header icon wired through `embokoun.png`
 - Tampermonkey / Kiwi support through `GM_xmlhttpRequest`
 - Greasemonkey 4+ support through `GM.xmlHttpRequest`
 - userscript menu settings via `GM_registerMenuCommand` / `GM.registerMenuCommand`
@@ -101,6 +107,24 @@ Settings are stored in:
 
 ```javascript
 localStorage['embokoun.settings.v1']
+```
+
+## Icon
+
+The project icon is the **obsidian media shrine**:
+
+```text
+black obsidian tombstone / altar
+large golden play button
+tiny okoun statue on top
+cute horroresque pixel-art-ish energy
+```
+
+Used files:
+
+```text
+icon.ico      userscript manager icon
+embokoun.png  README/settings header icon
 ```
 
 ## Placeholder thumbnails
@@ -245,11 +269,14 @@ Main idea: services resolve media intent first, then core rendering decides whet
 
 ```text
 embokoun.user.js
+icon.ico
+embokoun.png
 src/core/namespace.js
 src/core/gm.js
 src/core/log.js
 src/core/config.js
 src/core/ui.js
+src/core/icon.js
 src/core/blob.js
 src/core/shell.js
 src/core/render.js
