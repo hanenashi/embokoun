@@ -48,6 +48,30 @@
         });
     }
 
+    function fetchImageBlob(url, referer) {
+        return new Promise((resolve, reject) => {
+            root.gm.request({
+                method: 'GET',
+                url,
+                timeout: 15000,
+                responseType: 'blob',
+                headers: {
+                    'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                    'Referer': referer || 'https://t.me/'
+                },
+                onload: (res) => {
+                    if (res.status < 200 || res.status >= 300 || !res.response || !res.response.size) {
+                        reject(new Error(`Telegram thumb HTTP ${res.status}`));
+                        return;
+                    }
+                    resolve(URL.createObjectURL(res.response));
+                },
+                onerror: () => reject(new Error('Telegram thumb request failed')),
+                ontimeout: () => reject(new Error('Telegram thumb request timeout'))
+            });
+        });
+    }
+
     function parseEmbedHtml(html) {
         return new DOMParser().parseFromString(String(html || ''), 'text/html');
     }
@@ -121,12 +145,36 @@
 
     async function fetchThumb(embedUrl) {
         if (thumbCache.has(embedUrl)) return thumbCache.get(embedUrl);
-        const promise = getText(embedUrl, 'https://t.me/', 12000).then(html => {
-            const doc = parseEmbedHtml(html);
-            const videos = extractVideoItems(doc, embedUrl);
-            const images = extractImageItems(doc, embedUrl);
-            return (videos[0] && videos[0].thumbUrl) || (images[0] && images[0].url) || '';
-        }).catch(() => '');
+
+        const promise = (async () => {
+            try {
+                root.log.debug('telegram', 'fetching thumbnail metadata', embedUrl);
+                const html = await getText(embedUrl, 'https://t.me/', 12000);
+                const doc = parseEmbedHtml(html);
+                const videos = extractVideoItems(doc, embedUrl);
+                const images = extractImageItems(doc, embedUrl);
+                const thumbUrl = (videos[0] && videos[0].thumbUrl) || (images[0] && images[0].url) || '';
+
+                if (!thumbUrl) {
+                    root.log.warn('telegram', 'no thumbnail found', embedUrl);
+                    return '';
+                }
+
+                try {
+                    root.log.debug('telegram', 'fetching thumbnail blob', thumbUrl);
+                    const blobUrl = await fetchImageBlob(thumbUrl, embedUrl);
+                    root.log.info('telegram', 'thumbnail blob ready', thumbUrl);
+                    return blobUrl;
+                } catch (e) {
+                    root.log.warn('telegram', 'thumbnail blob failed; using direct url', thumbUrl, e);
+                    return thumbUrl;
+                }
+            } catch (e) {
+                root.log.warn('telegram', 'thumbnail metadata failed', embedUrl, e);
+                return '';
+            }
+        })();
+
         thumbCache.set(embedUrl, promise);
         return promise;
     }
