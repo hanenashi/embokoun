@@ -18,20 +18,31 @@
 
         const rect = anchor.getBoundingClientRect();
         const margin = 8;
-        const width = Math.min(460, Math.max(280, window.innerWidth - margin * 2));
-        const approxHeight = 520;
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 320;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 320;
+        const width = Math.min(460, Math.max(280, viewportWidth - margin * 2));
+        const maxViewportHeight = Math.max(160, viewportHeight - margin * 2);
 
         menu.style.width = `${width}px`;
+        menu.style.maxHeight = `${maxViewportHeight}px`;
+        menu.style.overflowY = 'auto';
         menu.style.transform = '';
 
         let left = rect.right - width;
-        left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+        left = Math.max(margin, Math.min(left, viewportWidth - width - margin));
 
-        let top = rect.bottom + margin;
-        if (top + approxHeight > window.innerHeight) top = Math.max(margin, rect.top - approxHeight - margin);
+        const naturalHeight = Math.min(menu.scrollHeight || 520, maxViewportHeight);
+        const spaceBelow = Math.max(0, viewportHeight - rect.bottom - margin);
+        const spaceAbove = Math.max(0, rect.top - margin);
+        const openBelow = spaceBelow >= naturalHeight || spaceBelow >= spaceAbove;
+        const availableHeight = Math.max(160, Math.min(maxViewportHeight, openBelow ? spaceBelow : spaceAbove));
+        const height = Math.min(naturalHeight, availableHeight);
+        let top = openBelow ? rect.bottom + margin : rect.top - height - margin;
+        top = Math.max(margin, Math.min(top, viewportHeight - height - margin));
 
         menu.style.left = `${left}px`;
         menu.style.top = `${top}px`;
+        menu.style.maxHeight = `${availableHeight}px`;
     }
 
     function openSettingsMenu(anchor) {
