@@ -467,7 +467,6 @@
         frame.setAttribute('data-embokoun-node', '1');
         frame.src = src;
         frame.style.cssText = `width:100%;${style || 'aspect-ratio:16/9;'}border:none;border-radius:4px;background:white;`;
-        frame.allowFullscreen = true;
         frame.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen';
         return frame;
     }

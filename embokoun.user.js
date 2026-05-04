@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         embokoun
 // @namespace    https://github.com/hanenashi/embokoun
-// @version      0.5
+// @version      0.5.1
 // @description  Modular universal embedder for okoun.cz
 // @author       hanenashi
 // @match        *://*.okoun.cz/*
@@ -44,7 +44,7 @@
         return;
     }
 
-    E.version = '0.5';
+    E.version = '0.5.1';
     E.gm.menuCommand('Embokoun settings', () => E.ui.openSettingsMenu());
 
     E.log.info('boot', 'starting', E.version);
