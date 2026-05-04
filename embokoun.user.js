@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         embokoun
 // @namespace    https://github.com/hanenashi/embokoun
-// @version      0.4.19-alpha
+// @version      0.4.20-alpha
 // @description  Modular universal embedder for okoun.cz
 // @author       hanenashi
 // @match        *://*.okoun.cz/*
@@ -41,7 +41,7 @@
         return;
     }
 
-    E.version = '0.4.19-alpha';
+    E.version = '0.4.20-alpha';
     E.gm.menuCommand('Embokoun settings', () => E.ui.openSettingsMenu());
 
     E.log.info('boot', 'starting', E.version);
