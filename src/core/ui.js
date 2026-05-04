@@ -18,7 +18,7 @@
 
         const rect = anchor.getBoundingClientRect();
         const margin = 8;
-        const width = Math.min(360, Math.max(280, window.innerWidth - margin * 2));
+        const width = Math.min(460, Math.max(280, window.innerWidth - margin * 2));
         const approxHeight = 520;
 
         menu.style.width = `${width}px`;
@@ -40,7 +40,7 @@
         const menu = document.createElement('div');
         menu.className = 'embokoun-settings-menu';
         menu.style.cssText = [
-            'position:fixed;', 'z-index:2147483647;', 'width:min(360px, calc(100vw - 20px));',
+            'position:fixed;', 'z-index:2147483647;', 'width:min(460px, calc(100vw - 20px));',
             'max-height:calc(100vh - 20px);', 'overflow:auto;', 'background:rgba(18,18,18,0.97);',
             'color:#eee;', 'border:1px solid rgba(255,255,255,0.22);', 'border-radius:10px;',
             'box-shadow:0 4px 18px rgba(0,0,0,0.45);', 'font-family:sans-serif;', 'font-size:12px;',
@@ -61,6 +61,26 @@
         title.appendChild(name);
         title.appendChild(miniClose);
         menu.appendChild(title);
+
+        const hero = document.createElement('div');
+        hero.setAttribute('data-embokoun-settings-icon', '1');
+        hero.style.cssText = 'display:flex;justify-content:center;align-items:center;margin:2px 0 12px;';
+
+        const heroImg = document.createElement('img');
+        heroImg.src = root.iconUrl || 'https://raw.githubusercontent.com/hanenashi/embokoun/main/embokoun.png';
+        heroImg.alt = 'embokoun';
+        heroImg.loading = 'lazy';
+        heroImg.decoding = 'async';
+        heroImg.style.cssText = [
+            'display:block;',
+            'width:min(200px, 100%);',
+            'height:auto;',
+            'object-fit:contain;',
+            'filter:drop-shadow(0 0 8px rgba(255,200,70,0.45)) drop-shadow(0 0 26px rgba(255,184,58,0.65));'
+        ].join('');
+
+        hero.appendChild(heroImg);
+        menu.appendChild(hero);
 
         menu.appendChild(settingsGroup('General', [
             selectRow('Log level', 'logLevel', ['off', 'error', 'warn', 'info', 'debug', 'trace']),
@@ -455,8 +475,6 @@
     document.addEventListener('click', ev => {
         if (!ev.target.closest || !ev.target.closest('.embokoun-settings-menu')) closeSettingsMenus();
     }, true);
-    window.addEventListener('scroll', closeSettingsMenus, true);
-    window.addEventListener('resize', closeSettingsMenus, true);
 
     root.ui = { openSettingsMenu, closeSettingsMenus, makeSettingsButton, makeSourceLink, makeDownloadPanel, makePlaceholder, iframe };
 })();
