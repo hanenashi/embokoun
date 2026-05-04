@@ -299,10 +299,34 @@
 
     function setPlaceholderImage(placeholder, imageUrl) {
         if (!imageUrl || !placeholder || !placeholder.isConnected) return;
-        placeholder.style.backgroundImage = [
-            'linear-gradient(rgba(0,0,0,0.18), rgba(0,0,0,0.42))',
-            `url("${String(imageUrl).replace(/"/g, '%22')}")`
-        ].join(', ');
+
+        let img = placeholder.querySelector('img[data-embokoun-placeholder-thumb="1"]');
+        if (!img) {
+            img = document.createElement('img');
+            img.setAttribute('data-embokoun-node', '1');
+            img.setAttribute('data-embokoun-placeholder-thumb', '1');
+            img.loading = 'lazy';
+            img.decoding = 'async';
+            img.alt = '';
+            img.style.cssText = [
+                'position:absolute;',
+                'inset:0;',
+                'width:100%;',
+                'height:100%;',
+                'object-fit:cover;',
+                'display:block;',
+                'border-radius:inherit;',
+                'opacity:0.72;',
+                'z-index:0;',
+                'pointer-events:none;',
+                'background:#111;'
+            ].join('');
+            placeholder.insertBefore(img, placeholder.firstChild);
+        }
+
+        img.src = imageUrl;
+        placeholder.style.backgroundColor = '#111';
+        root.log.debug('ui', 'placeholder thumb applied', imageUrl);
     }
 
     function applyPlaceholderPreview(placeholder, service, ctx) {
@@ -337,7 +361,7 @@
         placeholder.style.cssText = [
             'position:relative;', 'width:100%;', placeholderStyleForService(service), 'border-radius:4px;',
             'display:flex;', 'align-items:center;', 'justify-content:center;', 'cursor:pointer;',
-            'box-shadow:0 2px 8px rgba(0,0,0,0.2);', 'background-position:center;', 'background-size:cover;',
+            'overflow:hidden;', 'box-shadow:0 2px 8px rgba(0,0,0,0.2);', 'background-position:center;', 'background-size:cover;',
             'transition:background 0.2s ease;', isLine ? 'padding:0 44px 0 8px;box-sizing:border-box;' : ''
         ].join('');
 
@@ -347,12 +371,12 @@
         const button = document.createElement('div');
         button.textContent = `Load ${service.label}`;
         button.style.cssText = isLine
-            ? 'background:rgba(0,0,0,0.55);color:#fff;padding:4px 11px;border-radius:999px;font-family:sans-serif;font-size:12px;font-weight:bold;pointer-events:none;border:1px solid rgba(255,255,255,0.16);transition:all 0.2s;'
-            : 'background:rgba(0,0,0,0.75);color:#fff;padding:10px 20px;border-radius:20px;font-family:sans-serif;font-size:13px;font-weight:bold;pointer-events:none;border:1px solid rgba(255,255,255,0.2);transition:all 0.2s;';
+            ? 'position:relative;z-index:2;background:rgba(0,0,0,0.62);color:#fff;padding:4px 11px;border-radius:999px;font-family:sans-serif;font-size:12px;font-weight:bold;pointer-events:none;border:1px solid rgba(255,255,255,0.16);transition:all 0.2s;text-shadow:0 1px 2px #000;'
+            : 'position:relative;z-index:2;background:rgba(0,0,0,0.75);color:#fff;padding:10px 20px;border-radius:20px;font-family:sans-serif;font-size:13px;font-weight:bold;pointer-events:none;border:1px solid rgba(255,255,255,0.2);transition:all 0.2s;text-shadow:0 1px 2px #000;';
         placeholder.appendChild(button);
 
         placeholder.addEventListener('mouseenter', () => { button.style.background = 'rgba(180,0,0,0.9)'; });
-        placeholder.addEventListener('mouseleave', () => { button.style.background = isLine ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.75)'; });
+        placeholder.addEventListener('mouseleave', () => { button.style.background = isLine ? 'rgba(0,0,0,0.62)' : 'rgba(0,0,0,0.75)'; });
         placeholder.addEventListener('click', async () => {
             if (placeholder.dataset.loading === '1') return;
             closeSettingsMenus();
