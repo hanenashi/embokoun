@@ -10,6 +10,7 @@
         blobMaxMb: 80,
         blobMaxActive: 3,
         showSourceLinks: false,
+        parsePlainTextLinks: true,
         placeholderMode: 'line',
         placeholderThumbs: true,
         autoLoadServices: {},
@@ -51,6 +52,7 @@
                 blobMaxMb: sanitizeNumberChoice(parsed.blobMaxMb, [0, 25, 50, 80, 120, 200], base.blobMaxMb),
                 blobMaxActive: sanitizeNumberChoice(parsed.blobMaxActive, [1, 2, 3, 5], base.blobMaxActive),
                 showSourceLinks: sanitizeBool(parsed.showSourceLinks, base.showSourceLinks),
+                parsePlainTextLinks: sanitizeBool(parsed.parsePlainTextLinks, base.parsePlainTextLinks),
                 placeholderMode: sanitizeStringChoice(migratedMode, ['line', 'tombstone'], base.placeholderMode),
                 placeholderThumbs: sanitizeBool(migratedThumbs, base.placeholderThumbs),
                 autoLoadServices: {

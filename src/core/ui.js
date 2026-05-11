@@ -95,7 +95,8 @@
 
         menu.appendChild(settingsGroup('General', [
             selectRow('Log level', 'logLevel', ['off', 'error', 'warn', 'info', 'debug', 'trace']),
-            checkRow('Show original links', 'showSourceLinks', () => root.dom && root.dom.scan(document.body))
+            checkRow('Show original links', 'showSourceLinks', () => root.dom && root.dom.scan(document.body)),
+            checkRow('Parse plaintext links', 'parsePlainTextLinks', () => root.dom && root.dom.scan(document.body))
         ]));
 
         menu.appendChild(settingsGroup('Placeholders', [

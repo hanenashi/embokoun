@@ -18,7 +18,7 @@ The loader uses userscript `@require` entries to load the modules from `src/`.
 
 ## Current Status
 
-Current version: `0.5.2`
+Current version: `0.5.3`
 
 Embokoun is still alpha, but the current shape is usable and modular:
 
@@ -37,6 +37,7 @@ Embokoun is still alpha, but the current shape is usable and modular:
 - per-service enable and auto-load settings
 - localStorage-backed settings panel
 - Okoun DOM scanner with MutationObserver support
+- plaintext media URL detection inside Okoun posts
 - source/original-link visibility control
 - userscript icon from `icon.ico`
 - settings/README icon from `embokoun.png`
@@ -85,6 +86,7 @@ Current settings panel:
 General
   Log level
   Show original links
+  Parse plaintext links
 
 Placeholders
   Mode
@@ -110,6 +112,7 @@ Defaults:
   blobMaxMb: 80,
   blobMaxActive: 3,
   showSourceLinks: false,
+  parsePlainTextLinks: true,
   placeholderMode: 'line',
   placeholderThumbs: true,
   autoLoadServices: {},
@@ -121,6 +124,7 @@ Setting choices:
 
 - log level: `off / error / warn / info / debug / trace`
 - show original links: show or hide the original Okoun inline link and extra source link
+- parse plaintext links: detect supported bare `https://...` media URLs in post text
 - placeholder mode: `line` or `tombstone`
 - fetch thumbnails: enable or disable placeholder previews
 - blob size limit: `No limit / 25 / 50 / 80 / 120 / 200 MB`
