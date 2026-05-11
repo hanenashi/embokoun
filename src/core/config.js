@@ -11,6 +11,7 @@
         blobMaxActive: 3,
         showSourceLinks: false,
         parsePlainTextLinks: true,
+        burpounEnabled: true,
         mediaWidthMode: 'normal',
         mediaCustomWidthPx: 900,
         placeholderMode: 'line',
@@ -41,7 +42,7 @@
     function sanitizeCustomWidth(value, fallback) {
         const n = Number(value);
         if (!Number.isFinite(n)) return fallback;
-        return Math.max(320, Math.min(1400, Math.round(n)));
+        return Math.max(320, Math.min(3440, Math.round(n)));
     }
 
     function load() {
@@ -61,6 +62,7 @@
                 blobMaxActive: sanitizeNumberChoice(parsed.blobMaxActive, [1, 2, 3, 5], base.blobMaxActive),
                 showSourceLinks: sanitizeBool(parsed.showSourceLinks, base.showSourceLinks),
                 parsePlainTextLinks: sanitizeBool(parsed.parsePlainTextLinks, base.parsePlainTextLinks),
+                burpounEnabled: sanitizeBool(parsed.burpounEnabled, base.burpounEnabled),
                 mediaWidthMode: sanitizeStringChoice(parsed.mediaWidthMode, ['compact', 'normal', 'wide', 'large', 'full', 'custom'], base.mediaWidthMode),
                 mediaCustomWidthPx: sanitizeCustomWidth(parsed.mediaCustomWidthPx, base.mediaCustomWidthPx),
                 placeholderMode: sanitizeStringChoice(migratedMode, ['line', 'tombstone'], base.placeholderMode),

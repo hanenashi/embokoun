@@ -4,10 +4,11 @@
 
     const root = window.Embokoun = window.Embokoun || {};
 
-    root.version = root.version || '0.5.4';
+    root.version = root.version || '0.5.5';
     root.name = 'embokoun';
     root.githubUrl = 'https://github.com/hanenashi/embokoun';
     root.iconUrl = 'https://raw.githubusercontent.com/hanenashi/embokoun/main/embokoun.png';
+    root.burpounUrl = 'https://raw.githubusercontent.com/hanenashi/embokoun/main/burpoun.mp4';
 
     root.services = root.services || {
         list: [],

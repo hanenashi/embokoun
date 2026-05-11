@@ -80,6 +80,10 @@
 
         function setBufferedStatus(prefix) {
             const percent = bufferedPercent();
+            if (percent >= 100 || video.readyState >= 3) {
+                setStatus('');
+                return;
+            }
             setStatus(percent ? `${prefix} ${percent}%` : prefix);
         }
 
@@ -90,8 +94,11 @@
         video.addEventListener('progress', () => setBufferedStatus('Buffered'));
         video.addEventListener('waiting', () => setBufferedStatus('Buffering...'));
         video.addEventListener('stalled', () => setStatus('Network stalled. Waiting for video...'));
-        video.addEventListener('canplay', () => setStatus(video.paused ? 'Ready to play' : ''));
+        video.addEventListener('canplay', () => setStatus(''));
+        video.addEventListener('canplaythrough', () => setStatus(''));
         video.addEventListener('playing', () => setStatus(''));
+        video.addEventListener('pause', () => setStatus(''));
+        video.addEventListener('ended', () => setStatus(''));
         video.addEventListener('error', () => setStatus(`${ctx.service.label} failed to load`));
 
         wrap.appendChild(video);

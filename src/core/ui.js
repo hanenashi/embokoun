@@ -5,7 +5,10 @@
     const root = window.Embokoun;
 
     function closeSettingsMenus() {
-        document.querySelectorAll('.embokoun-settings-menu').forEach(menu => menu.remove());
+        document.querySelectorAll('.embokoun-settings-menu').forEach(menu => {
+            if (typeof menu.embokounCleanup === 'function') menu.embokounCleanup();
+            menu.remove();
+        });
     }
 
     function positionSettingsMenu(menu, anchor) {
@@ -92,11 +95,16 @@
 
         hero.appendChild(heroImg);
         menu.appendChild(hero);
+        setupBurpoun(menu, hero, heroImg);
 
         menu.appendChild(settingsGroup('General', [
             selectRow('Log level', 'logLevel', ['off', 'error', 'warn', 'info', 'debug', 'trace']),
             checkRow('Show original links', 'showSourceLinks', () => root.dom && root.dom.scan(document.body)),
-            checkRow('Parse plaintext links', 'parsePlainTextLinks', () => root.dom && root.dom.scan(document.body))
+            checkRow('Parse plaintext links', 'parsePlainTextLinks', () => root.dom && root.dom.scan(document.body)),
+            checkRow('Burpoun', 'burpounEnabled', () => {
+                closeSettingsMenus();
+                openSettingsMenu(anchor);
+            })
         ]));
 
         menu.appendChild(settingsGroup('Placeholders', [
@@ -152,6 +160,80 @@
 
         document.body.appendChild(menu);
         positionSettingsMenu(menu, anchor);
+    }
+
+    function setupBurpoun(menu, hero, heroImg) {
+        if (!root.config.get('burpounEnabled')) return;
+
+        const timers = [];
+        let destroyed = false;
+        let activeVideo = null;
+
+        function rememberTimer(id) {
+            timers.push(id);
+        }
+
+        function clearActiveVideo() {
+            if (!activeVideo) return;
+            try { activeVideo.pause(); } catch (e) { /* ignore */ }
+            activeVideo.remove();
+            activeVideo = null;
+            heroImg.style.display = 'block';
+        }
+
+        function schedule(delay) {
+            rememberTimer(setTimeout(playBurpoun, delay));
+        }
+
+        function playBurpoun() {
+            if (destroyed || !menu.isConnected || !root.config.get('burpounEnabled')) return;
+
+            clearActiveVideo();
+
+            const video = document.createElement('video');
+            video.setAttribute('data-embokoun-node', '1');
+            video.src = root.burpounUrl || 'https://raw.githubusercontent.com/hanenashi/embokoun/main/burpoun.mp4';
+            video.muted = false;
+            video.autoplay = true;
+            video.playsInline = true;
+            video.preload = 'auto';
+            video.style.cssText = [
+                'display:block;',
+                'width:min(200px, 100%);',
+                'height:auto;',
+                'object-fit:contain;',
+                'background:#000;'
+            ].join('');
+
+            activeVideo = video;
+            heroImg.style.display = 'none';
+            hero.appendChild(video);
+
+            video.addEventListener('ended', () => {
+                clearActiveVideo();
+                if (!destroyed && menu.isConnected && root.config.get('burpounEnabled')) {
+                    schedule(12000 + Math.round(Math.random() * 18000));
+                }
+            }, { once: true });
+
+            video.addEventListener('error', () => {
+                clearActiveVideo();
+            }, { once: true });
+
+            const play = video.play();
+            if (play && typeof play.catch === 'function') {
+                play.catch(() => clearActiveVideo());
+            }
+        }
+
+        menu.embokounCleanup = () => {
+            destroyed = true;
+            timers.forEach(id => clearTimeout(id));
+            timers.length = 0;
+            clearActiveVideo();
+        };
+
+        schedule(1000);
     }
 
     function settingsGroup(titleText, rows) {
@@ -310,12 +392,12 @@
         const input = document.createElement('input');
         input.type = 'number';
         input.min = '320';
-        input.max = '1400';
+        input.max = '3440';
         input.step = '10';
         input.value = String(root.config.get('mediaCustomWidthPx') || 900);
         input.style.cssText = 'width:92px;background:#222;color:#eee;border:1px solid #666;border-radius:5px;padding:3px 5px;';
         input.onchange = () => {
-            const next = Math.max(320, Math.min(1400, Math.round(Number(input.value) || 900)));
+            const next = Math.max(320, Math.min(3440, Math.round(Number(input.value) || 900)));
             input.value = String(next);
             root.config.set('mediaCustomWidthPx', next);
             if (root.dom && typeof root.dom.syncMediaWidth === 'function') root.dom.syncMediaWidth();
