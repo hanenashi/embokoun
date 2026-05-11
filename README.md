@@ -18,7 +18,7 @@ The loader uses userscript `@require` entries to load the modules from `src/`.
 
 ## Current Status
 
-Current version: `0.5.5`
+Current version: `0.5.6`
 
 Embokoun is still alpha, but the current shape is usable and modular:
 

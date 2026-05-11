@@ -55,7 +55,7 @@
         menu.className = 'embokoun-settings-menu';
         menu.style.cssText = [
             'position:fixed;', 'z-index:2147483647;', 'width:min(460px, calc(100vw - 20px));',
-            'max-height:calc(100vh - 20px);', 'overflow:auto;', 'background:rgba(18,18,18,0.97);',
+            'max-height:calc(100vh - 20px);', 'overflow:auto;', 'background:#000;',
             'color:#eee;', 'border:1px solid rgba(255,255,255,0.22);', 'border-radius:10px;',
             'box-shadow:0 4px 18px rgba(0,0,0,0.45);', 'font-family:sans-serif;', 'font-size:12px;',
             'padding:10px;', 'box-sizing:border-box;', 'text-align:left;', 'line-height:1.3;'
@@ -80,22 +80,13 @@
         hero.setAttribute('data-embokoun-settings-icon', '1');
         hero.style.cssText = 'display:flex;justify-content:center;align-items:center;margin:2px 0 12px;';
 
-        const heroImg = document.createElement('img');
-        heroImg.src = root.iconUrl || 'https://raw.githubusercontent.com/hanenashi/embokoun/main/embokoun.png';
-        heroImg.alt = 'embokoun';
-        heroImg.loading = 'lazy';
-        heroImg.decoding = 'async';
-        heroImg.style.cssText = [
-            'display:block;',
-            'width:min(200px, 100%);',
-            'height:auto;',
-            'object-fit:contain;',
-            'filter:drop-shadow(0 0 8px rgba(255,200,70,0.45)) drop-shadow(0 0 26px rgba(255,184,58,0.65));'
-        ].join('');
+        if (root.config.get('burpounEnabled')) {
+            setupBurpoun(menu, hero);
+        } else {
+            hero.appendChild(makeHeroImage());
+        }
 
-        hero.appendChild(heroImg);
         menu.appendChild(hero);
-        setupBurpoun(menu, hero, heroImg);
 
         menu.appendChild(settingsGroup('General', [
             selectRow('Log level', 'logLevel', ['off', 'error', 'warn', 'info', 'debug', 'trace']),
@@ -162,23 +153,49 @@
         positionSettingsMenu(menu, anchor);
     }
 
-    function setupBurpoun(menu, hero, heroImg) {
-        if (!root.config.get('burpounEnabled')) return;
+    function makeHeroImage() {
+        const heroImg = document.createElement('img');
+        heroImg.src = root.iconUrl || 'https://raw.githubusercontent.com/hanenashi/embokoun/main/embokoun.png';
+        heroImg.alt = 'embokoun';
+        heroImg.loading = 'lazy';
+        heroImg.decoding = 'async';
+        heroImg.style.cssText = [
+            'display:block;',
+            'width:min(200px, 100%);',
+            'height:auto;',
+            'object-fit:contain;',
+            'filter:drop-shadow(0 0 8px rgba(255,200,70,0.45)) drop-shadow(0 0 26px rgba(255,184,58,0.65));'
+        ].join('');
+        return heroImg;
+    }
 
+    function setupBurpoun(menu, hero) {
         const timers = [];
         let destroyed = false;
-        let activeVideo = null;
+        const video = document.createElement('video');
+        video.setAttribute('data-embokoun-node', '1');
+        video.src = root.burpounUrl || 'https://raw.githubusercontent.com/hanenashi/embokoun/main/burpoun.mp4';
+        video.muted = false;
+        video.autoplay = false;
+        video.playsInline = true;
+        video.preload = 'auto';
+        video.style.cssText = [
+            'display:block;',
+            'width:min(200px, 100%);',
+            'height:auto;',
+            'object-fit:contain;',
+            'background:#000;'
+        ].join('');
+
+        hero.appendChild(video);
 
         function rememberTimer(id) {
             timers.push(id);
         }
 
-        function clearActiveVideo() {
-            if (!activeVideo) return;
-            try { activeVideo.pause(); } catch (e) { /* ignore */ }
-            activeVideo.remove();
-            activeVideo = null;
-            heroImg.style.display = 'block';
+        function resetVideo() {
+            try { video.pause(); } catch (e) { /* ignore */ }
+            try { video.currentTime = 0; } catch (e) { /* ignore */ }
         }
 
         function schedule(delay) {
@@ -187,50 +204,31 @@
 
         function playBurpoun() {
             if (destroyed || !menu.isConnected || !root.config.get('burpounEnabled')) return;
-
-            clearActiveVideo();
-
-            const video = document.createElement('video');
-            video.setAttribute('data-embokoun-node', '1');
-            video.src = root.burpounUrl || 'https://raw.githubusercontent.com/hanenashi/embokoun/main/burpoun.mp4';
-            video.muted = false;
-            video.autoplay = true;
-            video.playsInline = true;
-            video.preload = 'auto';
-            video.style.cssText = [
-                'display:block;',
-                'width:min(200px, 100%);',
-                'height:auto;',
-                'object-fit:contain;',
-                'background:#000;'
-            ].join('');
-
-            activeVideo = video;
-            heroImg.style.display = 'none';
-            hero.appendChild(video);
-
-            video.addEventListener('ended', () => {
-                clearActiveVideo();
-                if (!destroyed && menu.isConnected && root.config.get('burpounEnabled')) {
-                    schedule(12000 + Math.round(Math.random() * 18000));
-                }
-            }, { once: true });
-
-            video.addEventListener('error', () => {
-                clearActiveVideo();
-            }, { once: true });
+            resetVideo();
 
             const play = video.play();
             if (play && typeof play.catch === 'function') {
-                play.catch(() => clearActiveVideo());
+                play.catch(() => resetVideo());
             }
         }
+
+        video.addEventListener('loadedmetadata', resetVideo, { once: true });
+        video.addEventListener('ended', () => {
+            resetVideo();
+            if (!destroyed && menu.isConnected && root.config.get('burpounEnabled')) {
+                schedule(12000 + Math.round(Math.random() * 18000));
+            }
+        });
+        video.addEventListener('error', () => {
+            hero.innerHTML = '';
+            hero.appendChild(makeHeroImage());
+        }, { once: true });
 
         menu.embokounCleanup = () => {
             destroyed = true;
             timers.forEach(id => clearTimeout(id));
             timers.length = 0;
-            clearActiveVideo();
+            resetVideo();
         };
 
         schedule(1000);
