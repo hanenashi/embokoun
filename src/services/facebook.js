@@ -239,7 +239,7 @@
         const card = document.createElement('div');
         card.setAttribute('data-embokoun-node', '1');
         card.style.cssText = [
-            'width:100%;', 'max-width:550px;', 'box-sizing:border-box;', 'border:1px solid #dddfe2;',
+            'width:100%;', 'max-width:100%;', 'box-sizing:border-box;', 'border:1px solid #dddfe2;',
             'border-radius:8px;', 'background:#fff;', 'color:#1c1e21;',
             'font-family:Helvetica,Arial,sans-serif;', 'font-size:14px;', 'line-height:1.35;',
             'overflow:hidden;', 'box-shadow:0 2px 8px rgba(0,0,0,0.14);'
@@ -307,7 +307,6 @@
         key: 'facebook',
         label: 'Facebook',
         style: 'aspect-ratio:16/9;background:#18191a;',
-        maxWidth: '550px',
 
         match(url) {
             if (!/(?:^|\.)facebook\.com|fb\.watch/i.test(url)) return null;

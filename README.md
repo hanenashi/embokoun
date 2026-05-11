@@ -18,7 +18,7 @@ The loader uses userscript `@require` entries to load the modules from `src/`.
 
 ## Current Status
 
-Current version: `0.5.3`
+Current version: `0.5.4`
 
 Embokoun is still alpha, but the current shape is usable and modular:
 
@@ -33,6 +33,7 @@ Embokoun is still alpha, but the current shape is usable and modular:
 - backward-compatible old `embed(ctx)` service support
 - universal iframe fallback helper
 - blob video loading with progress, cancel, size limits, and cleanup
+- native Direct MP4 streaming status overlay
 - placeholder rendering with optional thumbnails
 - per-service enable and auto-load settings
 - localStorage-backed settings panel
@@ -92,6 +93,10 @@ Placeholders
   Mode
   Fetch thumbnails
 
+Media Size
+  Width
+  Custom width
+
 Loading
   Blob size limit
   Loaded blob videos
@@ -113,6 +118,8 @@ Defaults:
   blobMaxActive: 3,
   showSourceLinks: false,
   parsePlainTextLinks: true,
+  mediaWidthMode: 'normal',
+  mediaCustomWidthPx: 900,
   placeholderMode: 'line',
   placeholderThumbs: true,
   autoLoadServices: {},
@@ -125,6 +132,8 @@ Setting choices:
 - log level: `off / error / warn / info / debug / trace`
 - show original links: show or hide the original Okoun inline link and extra source link
 - parse plaintext links: detect supported bare `https://...` media URLs in post text
+- width: `Compact (420px) / Normal (550px) / Wide (760px) / Large (960px) / Full width / Custom`
+- custom width: manual media width from `320` to `1400` px when width is set to `Custom`
 - placeholder mode: `line` or `tombstone`
 - fetch thumbnails: enable or disable placeholder previews
 - blob size limit: `No limit / 25 / 50 / 80 / 120 / 200 MB`
@@ -170,6 +179,8 @@ Blob UI provides:
 - page unload cleanup
 
 The default blob limit is `80 MB`, and the default active blob video limit is `3`.
+
+Direct MP4 links stream through a native video player instead of blob-loading the whole file first. The native player shows a small status overlay while opening, buffering, or failing to load.
 
 ## Service Behavior
 

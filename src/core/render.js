@@ -10,6 +10,9 @@
     }
 
     function maxWidthForMode(mode) {
+        if ((!mode || mode === 'normal' || mode === 'tall') && root.config && typeof root.config.mediaMaxWidth === 'function') {
+            return root.config.mediaMaxWidth();
+        }
         if (mode === 'wide') return '760px';
         if (mode === 'full') return '100%';
         return '550px';
@@ -32,12 +35,68 @@
         video.playsInline = true;
         video.style.cssText = [
             'width:100%;',
-            result.style || `${aspectStyle(result.aspect)}background:#000;max-height:550px;`,
+            result.style || `${aspectStyle(result.aspect)}background:#000;`,
             'border-radius:4px;',
             'box-shadow:0 2px 8px rgba(0,0,0,0.2);',
             'background:#000;'
         ].join('');
         return video;
+    }
+
+    function makeStreamingVideo(url, result, ctx) {
+        const video = makeVideo(url, result);
+        const wrap = document.createElement('div');
+        wrap.setAttribute('data-embokoun-node', '1');
+        wrap.style.cssText = 'position:relative;width:100%;background:#000;border-radius:4px;';
+
+        const status = document.createElement('div');
+        status.setAttribute('data-embokoun-node', '1');
+        status.style.cssText = [
+            'position:absolute;',
+            'left:8px;',
+            'top:8px;',
+            'z-index:6;',
+            'max-width:calc(100% - 16px);',
+            'box-sizing:border-box;',
+            'padding:5px 8px;',
+            'border-radius:999px;',
+            'background:rgba(0,0,0,0.68);',
+            'color:#eee;',
+            'font:11px/1.25 sans-serif;',
+            'text-shadow:0 1px 1px #000;',
+            'pointer-events:none;'
+        ].join('');
+
+        function setStatus(text) {
+            status.textContent = text;
+            status.style.display = text ? '' : 'none';
+        }
+
+        function bufferedPercent() {
+            if (!Number.isFinite(video.duration) || video.duration <= 0 || !video.buffered.length) return 0;
+            const end = video.buffered.end(video.buffered.length - 1);
+            return Math.max(0, Math.min(100, Math.round((end / video.duration) * 100)));
+        }
+
+        function setBufferedStatus(prefix) {
+            const percent = bufferedPercent();
+            setStatus(percent ? `${prefix} ${percent}%` : prefix);
+        }
+
+        setStatus(result.statusText || `Loading ${ctx.service.label}...`);
+
+        video.addEventListener('loadstart', () => setStatus(`Opening ${ctx.service.label}...`));
+        video.addEventListener('loadedmetadata', () => setStatus(video.paused ? 'Ready to play' : 'Starting...'));
+        video.addEventListener('progress', () => setBufferedStatus('Buffered'));
+        video.addEventListener('waiting', () => setBufferedStatus('Buffering...'));
+        video.addEventListener('stalled', () => setStatus('Network stalled. Waiting for video...'));
+        video.addEventListener('canplay', () => setStatus(video.paused ? 'Ready to play' : ''));
+        video.addEventListener('playing', () => setStatus(''));
+        video.addEventListener('error', () => setStatus(`${ctx.service.label} failed to load`));
+
+        wrap.appendChild(video);
+        wrap.appendChild(status);
+        return wrap;
     }
 
     function makeImage(url, result) {
@@ -66,6 +125,7 @@
 
         const wrap = document.createElement('div');
         wrap.setAttribute('data-embokoun-node', '1');
+        wrap.setAttribute('data-embokoun-media-frame', '1');
         wrap.style.cssText = `width:100%;max-width:${maxWidth};display:flex;flex-direction:column;gap:5px;`;
 
         const frame = root.ui.iframe(src, `${aspectStyle(aspect)}resize:vertical;`);
@@ -179,7 +239,7 @@
             if (!result.url) throw new Error('video-url result without url');
 
             if (result.blob === false) {
-                return shell(makeVideo(result.url, result), ctx);
+                return shell(makeStreamingVideo(result.url, result, ctx), ctx);
             }
 
             return renderBlobVideo(ctx, result, placeholderNode);

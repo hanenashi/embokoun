@@ -7,7 +7,7 @@
     root.services.register({
         key: 'direct-mp4',
         label: 'Direct MP4',
-        style: 'aspect-ratio:16/9;background:#000;max-height:550px;',
+        style: 'aspect-ratio:16/9;background:#000;',
 
         match(url) {
             return url.match(/(https?:\/\/[^\s"'<>]+\.mp4(?:\?[^\s"'<>]*)?)/i);
@@ -20,10 +20,11 @@
                 kind: 'video-url',
                 url,
                 blob: false,
-                preload: 'none',
+                preload: 'metadata',
                 autoplay: false,
                 aspect: '16/9',
-                style: 'aspect-ratio:16/9;background:#000;max-height:550px;',
+                style: 'aspect-ratio:16/9;background:#000;',
+                statusText: 'Ready to stream Direct MP4',
                 reason: 'direct-mp4'
             };
         }

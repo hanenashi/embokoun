@@ -372,7 +372,7 @@
     function makeCard(data) {
         const card = document.createElement('div');
         card.setAttribute('data-embokoun-node', '1');
-        card.style.cssText = ['width:100%;', 'max-width:550px;', 'box-sizing:border-box;', 'border:1px solid #d7e3ec;', 'border-radius:8px;', 'background:#fff;', 'color:#212121;', 'font-family:Roboto,Arial,sans-serif;', 'font-size:14px;', 'line-height:1.38;', 'overflow:hidden;', 'box-shadow:0 2px 8px rgba(0,0,0,0.16);'].join('');
+        card.style.cssText = ['width:100%;', 'max-width:100%;', 'box-sizing:border-box;', 'border:1px solid #d7e3ec;', 'border-radius:8px;', 'background:#fff;', 'color:#212121;', 'font-family:Roboto,Arial,sans-serif;', 'font-size:14px;', 'line-height:1.38;', 'overflow:hidden;', 'box-shadow:0 2px 8px rgba(0,0,0,0.16);'].join('');
         const header = document.createElement('div');
         header.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 12px 8px;border-bottom:1px solid #edf3f7;';
         const dot = document.createElement('div');

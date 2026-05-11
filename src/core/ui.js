@@ -104,6 +104,11 @@
             checkRow('Fetch thumbnails', 'placeholderThumbs')
         ]));
 
+        menu.appendChild(settingsGroup('Media Size', [
+            mediaWidthRow(),
+            customWidthRow()
+        ]));
+
         menu.appendChild(settingsGroup('Loading', [
             numberSelectRow('Blob size limit', 'blobMaxMb', [0, 25, 50, 80, 120, 200], value => value === 0 ? 'No limit' : `${value} MB`),
             numberSelectRow('Loaded blob videos', 'blobMaxActive', [1, 2, 3, 5], value => String(value), () => {
@@ -263,6 +268,60 @@
         };
         row.appendChild(label);
         row.appendChild(select);
+        return row;
+    }
+
+    function mediaWidthRow() {
+        const labels = {
+            compact: 'Compact (420px)',
+            normal: 'Normal (550px)',
+            wide: 'Wide (760px)',
+            large: 'Large (960px)',
+            full: 'Full width',
+            custom: 'Custom'
+        };
+        const row = document.createElement('label');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0;color:#ccc;';
+        const label = document.createElement('span');
+        label.textContent = 'Width';
+        const select = document.createElement('select');
+        select.style.cssText = 'background:#222;color:#eee;border:1px solid #666;border-radius:5px;padding:3px 5px;max-width:170px;';
+        Object.keys(labels).forEach(value => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = labels[value];
+            if (root.config.get('mediaWidthMode') === value) option.selected = true;
+            select.appendChild(option);
+        });
+        select.onchange = () => {
+            root.config.set('mediaWidthMode', select.value);
+            if (root.dom && typeof root.dom.syncMediaWidth === 'function') root.dom.syncMediaWidth();
+        };
+        row.appendChild(label);
+        row.appendChild(select);
+        return row;
+    }
+
+    function customWidthRow() {
+        const row = document.createElement('label');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0;color:#ccc;';
+        const label = document.createElement('span');
+        label.textContent = 'Custom width';
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = '320';
+        input.max = '1400';
+        input.step = '10';
+        input.value = String(root.config.get('mediaCustomWidthPx') || 900);
+        input.style.cssText = 'width:92px;background:#222;color:#eee;border:1px solid #666;border-radius:5px;padding:3px 5px;';
+        input.onchange = () => {
+            const next = Math.max(320, Math.min(1400, Math.round(Number(input.value) || 900)));
+            input.value = String(next);
+            root.config.set('mediaCustomWidthPx', next);
+            if (root.dom && typeof root.dom.syncMediaWidth === 'function') root.dom.syncMediaWidth();
+        };
+        row.appendChild(label);
+        row.appendChild(input);
         return row;
     }
 

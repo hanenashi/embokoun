@@ -11,6 +11,8 @@
         blobMaxActive: 3,
         showSourceLinks: false,
         parsePlainTextLinks: true,
+        mediaWidthMode: 'normal',
+        mediaCustomWidthPx: 900,
         placeholderMode: 'line',
         placeholderThumbs: true,
         autoLoadServices: {},
@@ -36,6 +38,12 @@
         return typeof value === 'boolean' ? value : fallback;
     }
 
+    function sanitizeCustomWidth(value, fallback) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return fallback;
+        return Math.max(320, Math.min(1400, Math.round(n)));
+    }
+
     function load() {
         try {
             const raw = localStorage.getItem(KEY);
@@ -53,6 +61,8 @@
                 blobMaxActive: sanitizeNumberChoice(parsed.blobMaxActive, [1, 2, 3, 5], base.blobMaxActive),
                 showSourceLinks: sanitizeBool(parsed.showSourceLinks, base.showSourceLinks),
                 parsePlainTextLinks: sanitizeBool(parsed.parsePlainTextLinks, base.parsePlainTextLinks),
+                mediaWidthMode: sanitizeStringChoice(parsed.mediaWidthMode, ['compact', 'normal', 'wide', 'large', 'full', 'custom'], base.mediaWidthMode),
+                mediaCustomWidthPx: sanitizeCustomWidth(parsed.mediaCustomWidthPx, base.mediaCustomWidthPx),
                 placeholderMode: sanitizeStringChoice(migratedMode, ['line', 'tombstone'], base.placeholderMode),
                 placeholderThumbs: sanitizeBool(migratedThumbs, base.placeholderThumbs),
                 autoLoadServices: {
@@ -81,6 +91,21 @@
             const mb = Number(settings.blobMaxMb);
             if (mb === 0) return Infinity;
             return mb * 1024 * 1024;
+        },
+        mediaMaxWidth(serviceMaxWidth) {
+            if (serviceMaxWidth) return serviceMaxWidth;
+
+            const widths = {
+                compact: '420px',
+                normal: '550px',
+                wide: '760px',
+                large: '960px',
+                full: '100%'
+            };
+            const mode = settings.mediaWidthMode || 'normal';
+
+            if (mode === 'custom') return `${sanitizeCustomWidth(settings.mediaCustomWidthPx, defaults.mediaCustomWidthPx)}px`;
+            return widths[mode] || widths.normal;
         },
         isServiceEnabled(key) { return settings.enabledServices[key] !== false; },
         setServiceEnabled(key, enabled) { settings.enabledServices[key] = !!enabled; save(); },

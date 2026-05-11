@@ -3,7 +3,6 @@
     'use strict';
 
     const root = window.Embokoun;
-    const MAX_WIDTH = '550px';
     const URL_RE = /https?:\/\/[^\s<>"']+/ig;
 
     function isInsideEmbokounNode(node) {
@@ -43,6 +42,17 @@
         return source;
     }
 
+    function mediaMaxWidth(service) {
+        if (root.config && typeof root.config.mediaMaxWidth === 'function') {
+            return root.config.mediaMaxWidth(service && service.maxWidth);
+        }
+        return (service && service.maxWidth) || '550px';
+    }
+
+    function serviceByKey(key) {
+        return root.services.list.find(service => service.key === key) || null;
+    }
+
     function findService(url) {
         if (!url) return null;
 
@@ -73,9 +83,10 @@
         const wrapper = document.createElement('div');
         wrapper.setAttribute('data-embokoun-node', '1');
         wrapper.setAttribute('data-embokoun-wrapper', '1');
+        wrapper.dataset.embokounService = service.key;
         wrapper.dataset.embokounSourceUrl = url;
         wrapper.dataset.embokounServiceLabel = service.label;
-        wrapper.style.cssText = `margin:12px 0;max-width:${service.maxWidth || MAX_WIDTH};display:flex;flex-direction:column;`;
+        wrapper.style.cssText = `margin:12px 0;max-width:${mediaMaxWidth(service)};display:flex;flex-direction:column;`;
 
         const ctx = { match, originalUrl: url, link, service };
 
@@ -118,6 +129,19 @@
         });
 
         root.log.debug('dom', 'source visibility synced', `show=${show}`);
+    }
+
+    function syncMediaWidth() {
+        document.querySelectorAll('[data-embokoun-wrapper="1"]').forEach(wrapper => {
+            const service = serviceByKey(wrapper.dataset.embokounService);
+            wrapper.style.maxWidth = mediaMaxWidth(service);
+        });
+
+        document.querySelectorAll('[data-embokoun-media-frame="1"]').forEach(frame => {
+            frame.style.maxWidth = mediaMaxWidth();
+        });
+
+        root.log.debug('dom', 'media width synced');
     }
 
     function processLink(link) {
@@ -248,6 +272,7 @@
 
         links.forEach(processLink);
         syncSourceVisibility();
+        syncMediaWidth();
     }
 
     let scanTimer = null;
@@ -286,6 +311,7 @@
         scan,
         scheduleScan,
         syncSourceVisibility,
+        syncMediaWidth,
         isInsideEmbokounNode
     };
 })();
