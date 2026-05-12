@@ -46,6 +46,30 @@
         }
     }
 
+    function isEmbeddableFacebookUrl(url) {
+        let u;
+        try { u = new URL(url); }
+        catch (e) { return false; }
+
+        if (/fb\.watch$/i.test(u.hostname)) return /^\/[^\/?#]+/i.test(u.pathname);
+        if (!/(^|\.)facebook\.com$/i.test(u.hostname)) return false;
+        if (/\/plugins\//i.test(u.pathname)) return false;
+
+        const path = u.pathname.replace(/\/+$/g, '') || '/';
+        if (path === '/' || /^\/(?:home|login|watch|marketplace|groups|pages|friends|messages|notifications|settings)(?:\.php)?$/i.test(path)) {
+            return false;
+        }
+
+        if (/^\/story\.php$/i.test(path)) return !!(u.searchParams.get('story_fbid') || u.searchParams.get('id'));
+        if (/^\/photo\.php$/i.test(path)) return !!(u.searchParams.get('fbid') || u.searchParams.get('id'));
+        if (/^\/permalink\.php$/i.test(path)) return !!(u.searchParams.get('story_fbid') || u.searchParams.get('id'));
+        if (/^\/watch\//i.test(path)) return true;
+        if (/^\/reel\//i.test(path)) return true;
+        if (/\/(?:posts|videos|photos|permalink)\//i.test(path)) return true;
+
+        return false;
+    }
+
     function getText(url, timeout) {
         return new Promise((resolve, reject) => {
             root.gm.request({
@@ -309,8 +333,7 @@
         style: 'aspect-ratio:16/9;background:#18191a;',
 
         match(url) {
-            if (!/(?:^|\.)facebook\.com|fb\.watch/i.test(url)) return null;
-            if (/facebook\.com\/plugins\//i.test(url)) return null;
+            if (!isEmbeddableFacebookUrl(url)) return null;
             return [url, normalizeUrl(url)];
         },
 

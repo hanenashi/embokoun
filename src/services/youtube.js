@@ -64,6 +64,50 @@
         return promise;
     }
 
+    function parseTime(value) {
+        if (!value) return 0;
+
+        const raw = String(value).trim().toLowerCase();
+        if (/^\d+$/.test(raw)) return Number(raw);
+
+        let total = 0;
+        const units = raw.matchAll(/(\d+)\s*([hms])/g);
+        for (const match of units) {
+            const n = Number(match[1]);
+            if (!Number.isFinite(n)) continue;
+            if (match[2] === 'h') total += n * 3600;
+            if (match[2] === 'm') total += n * 60;
+            if (match[2] === 's') total += n;
+        }
+
+        return total;
+    }
+
+    function startSeconds(url) {
+        try {
+            const parsed = new URL(url);
+            const value = parsed.searchParams.get('t') ||
+                parsed.searchParams.get('start') ||
+                parsed.searchParams.get('time_continue') ||
+                (parsed.hash ? new URLSearchParams(parsed.hash.slice(1)).get('t') : '');
+            return parseTime(value);
+        } catch (e) {
+            const match = String(url || '').match(/[?#&](?:t|start|time_continue)=([^&#]+)/i);
+            return match ? parseTime(decodeURIComponent(match[1])) : 0;
+        }
+    }
+
+    function embedUrl(id, originalUrl, autoplay) {
+        const params = new URLSearchParams();
+        if (autoplay) params.set('autoplay', '1');
+
+        const start = startSeconds(originalUrl);
+        if (start > 0) params.set('start', String(start));
+
+        const query = params.toString();
+        return `https://www.youtube.com/embed/${encodeURIComponent(id)}${query ? `?${query}` : ''}`;
+    }
+
     root.services.register({
         key: 'youtube',
         label: 'YouTube',
@@ -79,10 +123,11 @@
 
         async resolve(ctx) {
             const id = ctx.match[1];
-            root.log.debug('youtube', 'resolved id', id);
+            const start = startSeconds(ctx.originalUrl);
+            root.log.debug('youtube', 'resolved id', id, start ? `start=${start}` : '');
             return {
                 kind: 'iframe',
-                url: `https://www.youtube.com/embed/${encodeURIComponent(id)}?autoplay=1`,
+                url: embedUrl(id, ctx.originalUrl, true),
                 widthMode: 'normal',
                 aspect: '16/9',
                 reason: 'youtube-embed'
@@ -92,7 +137,7 @@
         fallback(ctx) {
             const id = ctx.match[1];
             return root.render.fallbackFrame({
-                src: `https://www.youtube.com/embed/${encodeURIComponent(id)}`,
+                src: embedUrl(id, ctx.originalUrl, false),
                 mode: 'normal',
                 aspect: '16/9',
                 reason: 'youtube-fallback'

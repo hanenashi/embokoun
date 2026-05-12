@@ -18,7 +18,7 @@ The loader uses userscript `@require` entries to load the modules from `src/`.
 
 ## Current Status
 
-Current version: `0.5.6`
+Current version: `0.5.7`
 
 Embokoun is still alpha, but the current shape is usable and modular:
 
@@ -67,7 +67,7 @@ Vimeo         vimeo.com/... numeric video IDs
 Twitter/X     twitter.com/.../status/... and x.com/.../status/...
 Telegram      t.me/channel/123, t.me/s/channel/123, telegram.me/channel/123
 Instagram     instagram.com/reel/..., /p/..., /tv/...
-Facebook      facebook.com links and fb.watch links
+Facebook      Facebook post/story/watch/reel/photo links and fb.watch links
 TikTok        tiktok.com/@user/video/...
 Suno          suno.com/song/<uuid>
 ```
