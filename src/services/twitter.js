@@ -15,6 +15,45 @@
         });
     }
 
+    function makeBroadcastCard(url, id) {
+        const card = document.createElement('div');
+        card.setAttribute('data-embokoun-node', '1');
+        card.style.cssText = [
+            'width:100%;',
+            'box-sizing:border-box;',
+            'border:1px solid #2f3336;',
+            'border-radius:8px;',
+            'background:#000;',
+            'color:#f7f9f9;',
+            'font-family:Arial,sans-serif;',
+            'padding:14px;',
+            'display:flex;',
+            'flex-direction:column;',
+            'gap:8px;',
+            'box-shadow:0 2px 8px rgba(0,0,0,0.2);'
+        ].join('');
+
+        const title = document.createElement('div');
+        title.textContent = 'Twitter/X live broadcast';
+        title.style.cssText = 'font-weight:bold;font-size:14px;';
+
+        const meta = document.createElement('div');
+        meta.textContent = id;
+        meta.style.cssText = 'color:#8b98a5;font-size:12px;overflow-wrap:anywhere;';
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Open broadcast on X';
+        link.style.cssText = 'color:#1d9bf0;text-decoration:none;font-weight:bold;font-size:13px;';
+
+        card.appendChild(title);
+        card.appendChild(meta);
+        card.appendChild(link);
+        return card;
+    }
+
     function getJson(url, timeout) {
         timeout = timeout || 12000;
         return new Promise((resolve, reject) => {
@@ -146,16 +185,31 @@
         style: 'aspect-ratio:16/9;background:#000;',
 
         match(url) {
-            return url.match(/(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]+)\/status\/(\d+)/i);
+            const broadcast = url.match(/(?:twitter\.com|x\.com)\/i\/broadcasts\/([a-zA-Z0-9_]+)/i);
+            if (broadcast) return [url, 'broadcast', broadcast[1]];
+
+            const tweet = url.match(/(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]+)\/status\/(\d+)/i);
+            return tweet ? [url, 'tweet', tweet[1], tweet[2]] : null;
         },
 
         placeholderImage(ctx) {
-            return thumbnailUrl(ctx.match[1], ctx.match[2]);
+            if (ctx.match[1] !== 'tweet') return '';
+            return thumbnailUrl(ctx.match[2], ctx.match[3]);
         },
 
         async resolve(ctx) {
-            const username = ctx.match[1];
-            const id = ctx.match[2];
+            if (ctx.match[1] === 'broadcast') {
+                const id = ctx.match[2];
+                root.log.info('twitter', 'resolved broadcast card', id);
+                return {
+                    kind: 'native-node',
+                    node: makeBroadcastCard(ctx.originalUrl, id),
+                    reason: 'twitter-broadcast'
+                };
+            }
+
+            const username = ctx.match[2];
+            const id = ctx.match[3];
             const apiUrl = `https://api.vxtwitter.com/${encodeURIComponent(username)}/status/${encodeURIComponent(id)}`;
 
             root.log.info('twitter', 'fetching metadata', apiUrl);
@@ -184,7 +238,8 @@
         },
 
         fallback(ctx) {
-            return makeFallback(ctx.match[2]);
+            if (ctx.match[1] === 'broadcast') return makeBroadcastCard(ctx.originalUrl, ctx.match[2]);
+            return makeFallback(ctx.match[3]);
         }
     });
 })();

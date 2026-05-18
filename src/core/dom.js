@@ -24,6 +24,11 @@
         return !!(root.config && root.config.get && root.config.get('parsePlainTextLinks'));
     }
 
+    function messageContentRoot(node) {
+        if (!node || node.nodeType !== 1) return null;
+        return node.closest('.item .content');
+    }
+
     function rememberDisplay(el) {
         if (!el || el.dataset.embokounOrigDisplay !== undefined) return;
         el.dataset.embokounOrigDisplay = el.style.display || '';
@@ -152,7 +157,7 @@
         }
         if (isInsideEmbokounNode(link)) return;
 
-        const contentRoot = link.closest('div.content, .item .content');
+        const contentRoot = messageContentRoot(link);
         if (!contentRoot) return;
 
         const url = link.href;
@@ -184,7 +189,7 @@
         if (!parent) return false;
         if (isInsideEmbokounNode(parent)) return false;
         if (parent.closest('a, script, style, textarea, input, button, select, option')) return false;
-        if (!parent.closest('div.content, .item .content')) return false;
+        if (!messageContentRoot(parent)) return false;
 
         return true;
     }
@@ -236,9 +241,9 @@
         if (!rootNode || rootNode.nodeType !== 1) return;
 
         const roots = [];
-        if (rootNode.matches && rootNode.matches('div.content, .item .content')) roots.push(rootNode);
+        if (rootNode.matches && rootNode.matches('.item .content')) roots.push(rootNode);
         if (rootNode.querySelectorAll) {
-            rootNode.querySelectorAll('div.content, .item .content').forEach(content => roots.push(content));
+            rootNode.querySelectorAll('.item .content').forEach(content => roots.push(content));
         }
 
         roots.forEach(content => {
@@ -260,14 +265,14 @@
         if (!rootNode || rootNode.nodeType !== 1) return;
         if (isInsideEmbokounNode(rootNode)) return;
 
-        if (rootNode.matches && rootNode.matches('div.content a, .item .content a')) {
+        if (rootNode.matches && rootNode.matches('.item .content a')) {
             processLink(rootNode);
         }
 
         processPlainTextLinks(rootNode);
 
         const links = rootNode.querySelectorAll
-            ? rootNode.querySelectorAll('div.content a:not([data-embokoun-done="1"]), .item .content a:not([data-embokoun-done="1"])')
+            ? rootNode.querySelectorAll('.item .content a:not([data-embokoun-done="1"])')
             : [];
 
         links.forEach(processLink);

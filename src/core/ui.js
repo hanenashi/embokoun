@@ -255,8 +255,8 @@
         group.appendChild(title);
 
         const head = document.createElement('div');
-        head.style.cssText = 'display:grid;grid-template-columns:1fr 54px 66px;gap:6px;align-items:center;color:#888;font-size:10px;text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px;';
-        head.innerHTML = '<span>Service</span><span style="text-align:center;">On</span><span style="text-align:center;">Auto</span>';
+        head.style.cssText = 'display:grid;grid-template-columns:1fr 54px;gap:6px;align-items:center;color:#888;font-size:10px;text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px;';
+        head.innerHTML = '<span>Service</span><span style="text-align:center;">On</span>';
         group.appendChild(head);
 
         root.services.list.forEach(service => group.appendChild(serviceRow(service)));
@@ -265,7 +265,7 @@
 
     function serviceRow(service) {
         const row = document.createElement('div');
-        row.style.cssText = 'display:grid;grid-template-columns:1fr 54px 66px;gap:6px;align-items:center;padding:5px 0;border-top:1px solid rgba(255,255,255,0.07);';
+        row.style.cssText = 'display:grid;grid-template-columns:1fr 54px;gap:6px;align-items:center;padding:5px 0;border-top:1px solid rgba(255,255,255,0.07);';
 
         const label = document.createElement('div');
         label.textContent = service.label;
@@ -280,14 +280,8 @@
         };
         enabledWrap.appendChild(enabled);
 
-        const autoWrap = centerCell();
-        const auto = compactCheckbox(root.config.isServiceAutoLoad(service.key));
-        auto.onchange = () => root.config.setServiceAutoLoad(service.key, auto.checked);
-        autoWrap.appendChild(auto);
-
         row.appendChild(label);
         row.appendChild(enabledWrap);
-        row.appendChild(autoWrap);
         return row;
     }
 

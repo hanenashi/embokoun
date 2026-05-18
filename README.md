@@ -18,7 +18,7 @@ The loader uses userscript `@require` entries to load the modules from `src/`.
 
 ## Current Status
 
-Current version: `0.5.7`
+Current version: `0.5.8`
 
 Embokoun is still alpha, but the current shape is usable and modular:
 
@@ -36,7 +36,7 @@ Embokoun is still alpha, but the current shape is usable and modular:
 - native Direct MP4 streaming status overlay
 - placeholder rendering with optional thumbnails
 - optional Burpoun settings-panel easter egg
-- per-service enable and auto-load settings
+- per-service enable settings
 - localStorage-backed settings panel
 - Okoun DOM scanner with MutationObserver support
 - plaintext media URL detection inside Okoun posts
@@ -64,7 +64,7 @@ Current link matching:
 Direct MP4    https://.../*.mp4
 YouTube       youtube.com/watch, youtube.com/embed, youtube.com/live, youtube.com/shorts, youtu.be
 Vimeo         vimeo.com/... numeric video IDs
-Twitter/X     twitter.com/.../status/... and x.com/.../status/...
+Twitter/X     twitter.com/.../status/..., x.com/.../status/..., x.com/i/broadcasts/...
 Telegram      t.me/channel/123, t.me/s/channel/123, telegram.me/channel/123
 Instagram     instagram.com/reel/..., /p/..., /tv/...
 Facebook      Facebook post/story/watch/reel/photo links and fb.watch links
@@ -104,7 +104,7 @@ Loading
   Loaded blob videos
 
 Services
-  Service | On | Auto
+  Service | On
 
 GitHub
 Reset
@@ -125,7 +125,6 @@ Defaults:
   mediaCustomWidthPx: 900,
   placeholderMode: 'line',
   placeholderThumbs: true,
-  autoLoadServices: {},
   enabledServices: {}
 }
 ```
@@ -142,7 +141,7 @@ Setting choices:
 - fetch thumbnails: enable or disable placeholder previews
 - blob size limit: `No limit / 25 / 50 / 80 / 120 / 200 MB`
 - loaded blob videos: `1 / 2 / 3 / 5`
-- services: per-service `On` and `Auto` toggles
+- services: per-service `On` toggles
 - reset: restore defaults
 
 Settings are stored in:

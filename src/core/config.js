@@ -67,10 +67,7 @@
                 mediaCustomWidthPx: sanitizeCustomWidth(parsed.mediaCustomWidthPx, base.mediaCustomWidthPx),
                 placeholderMode: sanitizeStringChoice(migratedMode, ['line', 'tombstone'], base.placeholderMode),
                 placeholderThumbs: sanitizeBool(migratedThumbs, base.placeholderThumbs),
-                autoLoadServices: {
-                    ...base.autoLoadServices,
-                    ...(parsed.autoLoadServices || {})
-                },
+                autoLoadServices: {},
                 enabledServices: {
                     ...base.enabledServices,
                     ...(parsed.enabledServices || {})
